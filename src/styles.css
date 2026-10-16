@@ -1384,3 +1384,137 @@ summary {
   width: 64px;
   flex: none;
 }
+
+/* ===== 起動アニメーション ===== */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #ffb199, #ee6f61);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+.splash.leaving {
+  opacity: 0;
+  transform: scale(1.06);
+  pointer-events: none;
+}
+.splash-art {
+  overflow: visible;
+}
+.splash-art * {
+  transform-box: fill-box;
+}
+.sp-shadow {
+  fill: #a8392d;
+  opacity: 0.18;
+  transform-origin: center;
+  animation: sp-shadow 0.9s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* 上から落ちてきて → ぷにっとつぶれ → びよんと戻る */
+.sp-cal {
+  transform-origin: 50% 100%;
+  animation: sp-drop 1s both;
+}
+.sp-dot {
+  transform-origin: center;
+  animation: sp-pop 0.5s 0.7s cubic-bezier(0.3, 1.8, 0.5, 1) both;
+}
+.sp-lines {
+  transform-origin: 50% 70%;
+  animation: sp-lines 0.45s 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.splash-name {
+  margin: 0;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  animation: sp-name 0.5s 0.75s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes sp-drop {
+  0% {
+    transform: translateY(-140%) scale(0.92, 1.08);
+    animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
+  }
+  42% {
+    transform: translateY(0) scale(1, 1);
+    animation-timing-function: ease-out;
+  }
+  52% {
+    transform: translateY(0) scale(1.2, 0.76);
+    animation-timing-function: ease-in-out;
+  }
+  66% {
+    transform: translateY(0) scale(0.93, 1.09);
+    animation-timing-function: ease-in-out;
+  }
+  80% {
+    transform: translateY(0) scale(1.04, 0.97);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+}
+@keyframes sp-shadow {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  45% {
+    transform: scale(0.9);
+    opacity: 0.12;
+  }
+  55% {
+    transform: scale(1.15);
+    opacity: 0.22;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.18;
+  }
+}
+@keyframes sp-lines {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes sp-pop {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes sp-name {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-shadow,
+  .sp-cal,
+  .sp-dot,
+  .sp-lines,
+  .splash-name {
+    animation: none;
+  }
+}

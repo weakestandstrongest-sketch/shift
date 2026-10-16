@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AppData, DayOff, OffType, Shift } from "./types";
 import { loadData, saveData } from "./lib/storage";
 import { newId } from "./lib/shift";
@@ -9,6 +9,7 @@ import { ListView } from "./components/ListView";
 import { SettingsView } from "./components/SettingsView";
 import { ShiftSheet } from "./components/ShiftSheet";
 import { Icon, type IconName } from "./components/Icon";
+import { Splash } from "./components/Splash";
 
 type Tab = "calendar" | "import" | "list" | "settings";
 
@@ -48,6 +49,8 @@ export default function App() {
   const [selected, setSelected] = useState(todayISO());
   const [sheet, setSheet] = useState<SheetState>(null);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [splash, setSplash] = useState(true);
+  const hideSplash = useCallback(() => setSplash(false), []);
   const toastTimer = useRef<number | undefined>(undefined);
 
   // 下のバー: タップでハイライトが滑って移動し、指を滑らせるとハイライトがついてくる
@@ -246,6 +249,7 @@ export default function App() {
           }}
         />
       )}
+      {splash && <Splash onDone={hideSplash} />}
     </div>
   );
 }
