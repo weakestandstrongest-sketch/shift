@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { Store } from "../App";
-import type { OffType, Shift } from "../types";
+import type { CalEvent, OffType, Shift } from "../types";
 import { addMonths, calendarGrid, isValidISODate, parseISODate, todayISO, WEEKDAYS } from "../lib/date";
 import { formatHours, isFinished, shiftsInMonth, sortShifts, summarize, workMinutes } from "../lib/shift";
 import { Icon } from "./Icon";
@@ -13,13 +13,18 @@ interface Props {
   selected: string;
   onSelect: (iso: string) => void;
   onEdit: (s: Shift) => void;
+  onEditEvent: (e: CalEvent) => void;
   onAdd: (date: string) => void;
+  onDeleteEvent: (e: CalEvent) => void;
   onDelete: (s: Shift) => void;
   onClearOff: (date: string, type: OffType) => void;
   goList: () => void;
 }
 
-export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, onDelete, onClearOff, goList }: Props) {
+/** 終日の予定を先に、そのあと開始時刻の順 */
+const eventOrder = (a: CalEvent, b: CalEvent) => (a.start ?? "").localeCompare(b.start ?? "");
+
+export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onEditEvent, onAdd, onDelete, onDeleteEvent, onClearOff, goList }: Props) {
   const { data } = store;
   const rules = data.settings.breakRules;
   const today = todayISO();
@@ -28,6 +33,8 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
   const byDate = new Map<string, Shift[]>();
   for (const s of sortShifts(data.shifts)) byDate.set(s.date, [...(byDate.get(s.date) ?? []), s]);
   const offByDate = new Map(data.daysOff.map((d) => [d.date, d.type]));
+  const eventsByDate = new Map<string, CalEvent[]>();
+  for (const e of [...data.events].sort(eventOrder)) eventsByDate.set(e.date, [...(eventsByDate.get(e.date) ?? []), e]);
   const colorOf = (s: Shift) => data.workplaces.find((w) => w.id === s.workplaceId)?.color ?? "var(--accent)";
 
   // 6 週目が丸ごと翌月なら表示しない
@@ -48,6 +55,11 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
   const sel = parseISODate(selected);
   const dayShifts = byDate.get(selected) ?? [];
   const dayOff = offByDate.get(selected) ?? null;
+  // シフトと予定を時刻の順に並べる (終日の予定がいちばん上)
+  const dayItems = [
+    ...dayShifts.map((shift) => ({ kind: "shift" as const, key: shift.start, shift })),
+    ...(eventsByDate.get(selected) ?? []).map((event) => ({ kind: "event" as const, key: event.start ?? "", event })),
+  ].sort((a, b) => a.key.localeCompare(b.key));
 
   // 左右スワイプで月を切り替える
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -119,12 +131,13 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
         {cells.map((c) => {
           const list = byDate.get(c.iso) ?? [];
           const off = offByDate.get(c.iso);
+          const evs = eventsByDate.get(c.iso) ?? [];
           return (
             <button
               key={c.iso}
               className={`cal-day${c.inMonth ? "" : " out"}${c.iso === selected ? " sel" : ""}${c.iso === today ? " today" : ""}`}
               onClick={() => onSelect(c.iso)}
-              aria-label={`${c.iso}${list.length ? ` シフト${list.length}件` : ""}${off ? ` ${off}` : ""}`}
+              aria-label={`${c.iso}${list.length ? ` シフト${list.length}件` : ""}${off ? ` ${off}` : ""}${evs.length ? ` 予定${evs.length}件` : ""}`}
             >
               <span className={`num wd-${c.weekday}`}>{c.day}</span>
               {list.length > 0 && (
@@ -134,6 +147,13 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
                 </span>
               )}
               {list.length === 0 && off && <span className={`cal-off off-${off}`}>{off}</span>}
+              {evs.length > 0 && (
+                <span className="cal-dots" aria-hidden>
+                  {evs.slice(0, 3).map((e) => (
+                    <i key={e.id} style={{ background: e.color }} />
+                  ))}
+                </span>
+              )}
             </button>
           );
         })}
@@ -142,14 +162,15 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
       <button className="board" onClick={goList}>
         <svg className="ring" width="64" height="64" viewBox="0 0 64 64" aria-hidden>
           <circle cx="32" cy="32" r={R} className="ring-bg" />
-          <circle
-            cx="32"
-            cy="32"
-            r={R}
-            className="ring-fg"
-            strokeDasharray={`${C * progress} ${C}`}
-            transform="rotate(-90 32 32)"
-          />
+          {/* 0% のときは丸い端だけが点として見えてしまうので描かない */}
+          {progress > 0 && (          <circle
+              cx="32"
+              cy="32"
+              r={R}
+              className="ring-fg"
+              strokeDasharray={`${C * progress} ${C}`}
+              transform="rotate(-90 32 32)"
+            />)}
         </svg>
         <span className="board-main">
           <small>{ym.month}月のバイト（見込み）</small>
@@ -187,31 +208,50 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
           </div>
         )}
 
-        {dayShifts.map((s) => {
-          const wp = data.workplaces.find((w) => w.id === s.workplaceId);
-          return (
-            <div key={s.id} className="item">
-              <button className="item-main" onClick={() => onEdit(s)}>
-                <span className="item-time">{s.start}</span>
-                <span className="item-bar" style={{ background: colorOf(s) }} />
+        {dayItems.map((it) =>
+          it.kind === "shift" ? (
+            <div key={it.shift.id} className="item">
+              <button className="item-main" onClick={() => onEdit(it.shift)}>
+                <span className="item-time">{it.shift.start}</span>
+                <span className="item-bar" style={{ background: colorOf(it.shift) }} />
                 <span className="item-body">
-                  <strong>{wp?.name ?? "シフト"}</strong>
+                  <strong>{data.workplaces.find((w) => w.id === it.shift.workplaceId)?.name ?? "シフト"}</strong>
                   <small>
-                    {s.start}〜{s.end}・実働 {formatHours(workMinutes(s, rules))}
-                    {s.note && `・${s.note}`}
+                    {it.shift.start}〜{it.shift.end}・実働 {formatHours(workMinutes(it.shift, rules))}
+                    {it.shift.note && `・${it.shift.note}`}
                   </small>
                 </span>
               </button>
-              <button className="item-del" aria-label={`${s.start}〜${s.end} のシフトを削除`} onClick={() => onDelete(s)}>
+              <button className="item-del" aria-label={`${it.shift.start}〜${it.shift.end} のシフトを削除`} onClick={() => onDelete(it.shift)}>
                 <Icon name="close" size={18} />
               </button>
             </div>
-          );
-        })}
+          ) : (
+            <div key={it.event.id} className="item event-item">
+              <button className="item-main" onClick={() => onEditEvent(it.event)}>
+                <span className={`item-time${it.event.start ? "" : " allday"}`}>{it.event.start ?? "終日"}</span>
+                <span className="item-bar" style={{ background: it.event.color }} />
+                <span className="item-body">
+                  <strong>{it.event.title}</strong>
+                  {(it.event.start || it.event.note) && (
+                    <small>
+                      {it.event.start && `${it.event.start}${it.event.end ? `〜${it.event.end}` : ""}`}
+                      {it.event.start && it.event.note && "・"}
+                      {it.event.note}
+                    </small>
+                  )}
+                </span>
+              </button>
+              <button className="item-del" aria-label={`予定「${it.event.title}」を削除`} onClick={() => onDeleteEvent(it.event)}>
+                <Icon name="close" size={18} />
+              </button>
+            </div>
+          ),
+        )}
 
-        {dayShifts.length === 0 && !dayOff && <p className="empty">予定はありません</p>}
+        {dayItems.length === 0 && !dayOff && <p className="empty">予定はありません</p>}
         <button className="add-line" onClick={() => onAdd(selected)}>
-          <Icon name="plus" size={18} /> この日にシフトを追加
+          <Icon name="plus" size={18} /> この日に追加
         </button>
       </section>
     </div>

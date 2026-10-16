@@ -5,6 +5,7 @@ import { OFF_TYPES } from "../types";
 import { parseISODate } from "../lib/date";
 import { formatHours, newId, ruleBreak, spanMinutes, workMinutes } from "../lib/shift";
 import { Icon } from "./Icon";
+import { KindSwitch } from "./KindSwitch";
 
 interface Props {
   store: Store;
@@ -13,6 +14,8 @@ interface Props {
   onClose: () => void;
   onSaved: (date: string, message: string) => void;
   onDelete: (s: Shift) => void;
+  /** 新規のとき「予定」に切り替える */
+  onSwitchToEvent: (date: string) => void;
 }
 
 interface Preset {
@@ -52,7 +55,7 @@ const md = (iso: string) => {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 };
 
-export function ShiftSheet({ store, shift, date, onClose, onSaved, onDelete }: Props) {
+export function ShiftSheet({ store, shift, date, onClose, onSaved, onDelete, onSwitchToEvent }: Props) {
   const { data } = store;
   const list = presets(store);
   const [draft, setDraft] = useState<Shift>(
@@ -85,7 +88,7 @@ export function ShiftSheet({ store, shift, date, onClose, onSaved, onDelete }: P
       <div className="sheet" role="dialog" aria-label={shift ? "シフトを編集" : "シフトを追加"} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
         <div className="sheet-head">
-          <h3>{shift ? "シフトを編集" : "シフトを追加"}</h3>
+          {shift ? <h3>シフトを編集</h3> : <KindSwitch value="shift" onChange={() => onSwitchToEvent(draft.date)} />}
           <button className="round-btn" aria-label="閉じる" onClick={onClose}>
             <Icon name="close" size={20} />
           </button>

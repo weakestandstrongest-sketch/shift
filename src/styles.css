@@ -417,6 +417,18 @@ summary {
   line-height: 1.3;
 }
 
+.cal-dots {
+  display: flex;
+  gap: 3px;
+  height: 6px;
+  margin-top: 1px;
+}
+.cal-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
 /* バイトのカード */
 .board {
   all: unset;
@@ -553,6 +565,10 @@ summary {
 }
 .item-del:active {
   background: var(--card-2);
+}
+.item-time.allday {
+  font-size: 14px;
+  color: var(--muted);
 }
 .off-item .item-main {
   cursor: default;
@@ -713,6 +729,45 @@ summary {
   from {
     background: transparent;
   }
+}
+
+.kind-switch {
+  display: flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--card-2);
+}
+.kind-switch button {
+  padding: 7px 20px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+.kind-switch button.on {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+}
+.color-pick {
+  display: flex;
+  gap: 12px;
+  margin: 2px 0 14px;
+}
+.color-pick button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+}
+.color-pick button.on {
+  outline-color: var(--text);
+}
+.event-times {
+  margin-top: 10px;
 }
 
 /* ===== 下のバー (iOS 風のすりガラス) ===== */

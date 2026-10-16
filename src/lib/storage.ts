@@ -28,6 +28,16 @@ export const DEFAULT_OFF_SYMBOLS: OffSymbol[] = [
   { symbol: "△", type: "無視" },
 ];
 
+/** 予定の色 */
+export const EVENT_COLORS = [
+  { color: "#3b82f6", name: "青" },
+  { color: "#a970e8", name: "紫" },
+  { color: "#34c759", name: "緑" },
+  { color: "#f2994a", name: "オレンジ" },
+  { color: "#ee7a6e", name: "赤" },
+  { color: "#8e8e93", name: "グレー" },
+];
+
 export const WORKPLACE_COLORS = ["#2f80ed", "#eb5757", "#27ae60", "#f2994a", "#9b51e0", "#00a3a3", "#d6336c", "#828282"];
 
 export function defaultData(): AppData {
@@ -49,6 +59,7 @@ export function defaultData(): AppData {
     workplaces: [],
     shifts: [],
     daysOff: [],
+    events: [],
   };
 }
 
@@ -68,6 +79,7 @@ export function migrate(raw: unknown): AppData {
     workplaces: Array.isArray(r.workplaces) ? r.workplaces : [],
     shifts: Array.isArray(r.shifts) ? r.shifts : [],
     daysOff: Array.isArray(r.daysOff) ? r.daysOff : [],
+    events: Array.isArray(r.events) ? r.events : [],
   };
 }
 

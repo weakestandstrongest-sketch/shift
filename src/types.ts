@@ -58,6 +58,20 @@ export interface Shift {
   source: "manual" | "photo";
 }
 
+/** シフトとは別の、ふつうの予定 (給料や勤務時間には入らない) */
+export interface CalEvent {
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  title: string;
+  /** HH:MM。null なら終日 */
+  start: string | null;
+  /** HH:MM。null なら終了時刻なし */
+  end: string | null;
+  color: string;
+  note: string;
+}
+
 export interface Settings {
   myName: string;
   /** シフト表での別表記 (苗字だけ、カタカナ、ニックネームなど) */
@@ -83,4 +97,5 @@ export interface AppData {
   workplaces: Workplace[];
   shifts: Shift[];
   daysOff: DayOff[];
+  events: CalEvent[];
 }

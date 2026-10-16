@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { AppData, DayOff, OffType, Shift } from "./types";
+import type { AppData, CalEvent, DayOff, OffType, Shift } from "./types";
 import { loadData, saveData } from "./lib/storage";
 import { newId } from "./lib/shift";
 import { parseISODate, todayISO } from "./lib/date";
@@ -8,6 +8,7 @@ import { ImportView } from "./components/ImportView";
 import { ListView } from "./components/ListView";
 import { SettingsView } from "./components/SettingsView";
 import { ShiftSheet } from "./components/ShiftSheet";
+import { EventSheet } from "./components/EventSheet";
 import { Icon, type IconName } from "./components/Icon";
 import { Splash } from "./components/Splash";
 
@@ -25,6 +26,8 @@ export interface Store {
   setData: (fn: (d: AppData) => AppData) => void;
   upsertShift: (s: Shift) => void;
   deleteShift: (id: string) => void;
+  upsertEvent: (e: CalEvent) => void;
+  deleteEvent: (id: string) => void;
   addShifts: (s: Shift[]) => void;
   /** 休みを登録する。同じ日の休みは置き換える */
   addDaysOff: (d: DayOff[]) => void;
@@ -33,7 +36,10 @@ export interface Store {
 }
 
 /** 追加・編集シートの状態 */
-export type SheetState = { shift: Shift | null; date: string } | null;
+export type SheetState =
+  | { kind: "shift"; shift: Shift | null; date: string }
+  | { kind: "event"; event: CalEvent | null; date: string }
+  | null;
 
 /** 画面下に一時的に出すお知らせ (元に戻すボタン付き) */
 export interface Toast {
@@ -95,6 +101,12 @@ export default function App() {
         shifts: d.shifts.some((x) => x.id === s.id) ? d.shifts.map((x) => (x.id === s.id ? s : x)) : [...d.shifts, s],
       })),
     deleteShift: (id) => setDataState((d) => ({ ...d, shifts: d.shifts.filter((x) => x.id !== id) })),
+    upsertEvent: (e) =>
+      setDataState((d) => ({
+        ...d,
+        events: d.events.some((x) => x.id === e.id) ? d.events.map((x) => (x.id === e.id ? e : x)) : [...d.events, e],
+      })),
+    deleteEvent: (id) => setDataState((d) => ({ ...d, events: d.events.filter((x) => x.id !== id) })),
     addShifts: (ss) => setDataState((d) => ({ ...d, shifts: [...d.shifts, ...ss] })),
     addDaysOff: (list) =>
       setDataState((d) => {
@@ -112,6 +124,10 @@ export default function App() {
   const deleteWithUndo = (s: Shift) => {
     store.deleteShift(s.id);
     showToast({ message: `${s.start}〜${s.end} のシフトを削除しました`, undo: () => store.upsertShift(s) });
+  };
+  const deleteEventWithUndo = (e: CalEvent) => {
+    store.deleteEvent(e.id);
+    showToast({ message: `「${e.title}」を削除しました`, undo: () => store.upsertEvent(e) });
   };
   const clearOffWithUndo = (date: string, type: OffType) => {
     store.setDayOff(date, null);
@@ -134,8 +150,10 @@ export default function App() {
             setYm={setYm}
             selected={selected}
             onSelect={setSelected}
-            onEdit={(s) => setSheet({ shift: s, date: s.date })}
-            onAdd={(date) => setSheet({ shift: null, date })}
+            onEdit={(s) => setSheet({ kind: "shift", shift: s, date: s.date })}
+            onEditEvent={(e) => setSheet({ kind: "event", event: e, date: e.date })}
+            onAdd={(date) => setSheet({ kind: "shift", shift: null, date })}
+            onDeleteEvent={deleteEventWithUndo}
             onDelete={deleteWithUndo}
             onClearOff={clearOffWithUndo}
             goList={() => setTab("list")}
@@ -151,7 +169,7 @@ export default function App() {
             }}
           />
         )}
-        {tab === "list" && <ListView store={store} ym={ym} setYm={setYm} onEdit={(s) => setSheet({ shift: s, date: s.date })} />}
+        {tab === "list" && <ListView store={store} ym={ym} setYm={setYm} onEdit={(s) => setSheet({ kind: "shift", shift: s, date: s.date })} />}
         {tab === "settings" && <SettingsView store={store} />}
       </main>
 
@@ -229,14 +247,15 @@ export default function App() {
         aria-label="シフトを追加"
         onClick={() => {
           if (tab !== "calendar") setTab("calendar");
-          setSheet({ shift: null, date: selected });
+          setSheet({ kind: "shift", shift: null, date: selected });
         }}
       >
         <Icon name="plus" size={30} strokeWidth={2.2} />
       </button>
 
-      {sheet && (
+      {sheet?.kind === "shift" && (
         <ShiftSheet
+          key={`shift-${sheet.shift?.id ?? "new"}`}
           store={store}
           shift={sheet.shift}
           date={sheet.date}
@@ -249,6 +268,25 @@ export default function App() {
             deleteWithUndo(s);
             setSheet(null);
           }}
+          onSwitchToEvent={(date) => setSheet({ kind: "event", event: null, date })}
+        />
+      )}
+      {sheet?.kind === "event" && (
+        <EventSheet
+          key={`event-${sheet.event?.id ?? "new"}`}
+          store={store}
+          event={sheet.event}
+          date={sheet.date}
+          onClose={() => setSheet(null)}
+          onSaved={(date, message) => {
+            selectDate(date);
+            showToast({ message });
+          }}
+          onDelete={(e) => {
+            deleteEventWithUndo(e);
+            setSheet(null);
+          }}
+          onSwitchToShift={(date) => setSheet({ kind: "shift", shift: null, date })}
         />
       )}
       {splash && <Splash onDone={hideSplash} />}
