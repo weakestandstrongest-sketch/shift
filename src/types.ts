@@ -109,6 +109,14 @@ export interface Settings {
   defaultWorkplaceId: string | null;
   /** 月間の目標金額 (円)。未設定なら null */
   monthlyGoal: number | null;
+  /** 何日ごとにバックアップのお知らせを出すか (0 = 出さない) */
+  backupReminderDays: number;
+  /** 最後にバックアップした日 (YYYY-MM-DD)。まだなら null */
+  lastBackupAt: string | null;
+  /** お知らせの日数を数え始めた日 (まだバックアップしていないときに使う) */
+  backupReminderSince: string;
+  /** 「あとで」を押したとき、この日まではお知らせを出さない */
+  backupSnoozedUntil: string | null;
 }
 
 export interface AppData {

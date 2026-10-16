@@ -13,6 +13,7 @@ import { ActionSheet, type Action } from "./components/ActionSheet";
 import { deleteOccurrence, type DeleteScope } from "./lib/repeat";
 import { Icon, type IconName } from "./components/Icon";
 import { Splash } from "./components/Splash";
+import { BackupBanner } from "./components/BackupBanner";
 
 type Tab = "calendar" | "import" | "list" | "settings";
 
@@ -169,6 +170,7 @@ export default function App() {
   return (
     <div className="app">
       <main className="app-main">
+        {tab === "calendar" && <BackupBanner store={store} onSaved={() => showToast({ message: "バックアップを保存しました" })} />}
         {tab === "calendar" && (
           <HomeView
             store={store}

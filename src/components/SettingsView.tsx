@@ -3,7 +3,8 @@ import type { Store } from "../App";
 import type { BreakRule, ColorBreak, OffSymbol, Settings, ShiftCode, Workplace } from "../types";
 import { OFF_TYPES } from "../types";
 import { newId } from "../lib/shift";
-import { DEFAULT_BREAK_RULES, DEFAULT_COLOR_BREAKS, DEFAULT_GEMINI_MODEL, DEFAULT_OFF_SYMBOLS, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
+import { DEFAULT_BREAK_RULES, DEFAULT_COLOR_BREAKS, DEFAULT_GEMINI_MODEL, DEFAULT_OFF_SYMBOLS, migrate, WORKPLACE_COLORS } from "../lib/storage";
+import { BACKUP_INTERVALS, saveBackup } from "../lib/backup";
 import { todayISO } from "../lib/date";
 import { UsageMeter } from "./UsageMeter";
 import { Icon } from "./Icon";
@@ -317,7 +318,12 @@ export function SettingsView({ store }: { store: Store }) {
         <h3>バックアップ</h3>
         <p className="muted">データはこのブラウザの中に保存されています。機種変更の前にはバックアップしてください。</p>
         <div className="photo-buttons">
-          <button onClick={() => downloadFile(`shift-backup-${todayISO()}.json`, exportJSON(data), "application/json")}>
+          <button
+            onClick={() => {
+              saveBackup(data, setSettings);
+              setMessage("バックアップを保存しました");
+            }}
+          >
             <Icon name="download" size={20} />
             保存する
           </button>
@@ -334,11 +340,11 @@ export function SettingsView({ store }: { store: Store }) {
                 if (!file) return;
                 try {
                   const restored = migrate(JSON.parse(await file.text()));
-                  if (!confirm(`シフト ${restored.shifts.length}件 を復元します。今のデータは上書きされます。よろしいですか?`)) return;
-                  // API キーはバックアップに含めないので、今のものを引き継ぐ
+                  if (!confirm(`シフト ${restored.shifts.length}件・予定 ${restored.events.length}件 を復元します。今のデータは上書きされます。よろしいですか?`)) return;
+                  // API キーはバックアップに含めないので、今のものを引き継ぐ。復元した内容はバックアップと同じなので、今日バックアップしたことにする
                   setData((d) => ({
                     ...restored,
-                    settings: { ...restored.settings, geminiApiKey: d.settings.geminiApiKey },
+                    settings: { ...restored.settings, geminiApiKey: d.settings.geminiApiKey, lastBackupAt: todayISO(), backupSnoozedUntil: null },
                   }));
                   setAliasText(restored.settings.aliases.join("、"));
                   setMessage("復元しました");
@@ -350,6 +356,20 @@ export function SettingsView({ store }: { store: Store }) {
           </label>
         </div>
         {message && <p className="muted">{message}</p>}
+        <label className="backup-remind">
+          <span>バックアップのお知らせ</span>
+          <select value={settings.backupReminderDays} onChange={(e) => setSettings({ backupReminderDays: Number(e.target.value), backupSnoozedUntil: null })}>
+            {BACKUP_INTERVALS.map((o) => (
+              <option key={o.days} value={o.days}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="muted small-note">
+          {settings.lastBackupAt ? `前回のバックアップ: ${settings.lastBackupAt.replaceAll("-", "/")}` : "まだバックアップしていません"}
+          {settings.backupReminderDays > 0 && "。期間がたつと、カレンダーの上にお知らせが出ます"}
+        </p>
       </section>
     </div>
   );

@@ -1,3 +1,4 @@
+import { todayISO } from "./date";
 import type { AppData, BreakRule, CalEvent, ColorBreak, OffSymbol, Repeat } from "../types";
 
 const STORAGE_KEY = "shift-app:v1";
@@ -55,6 +56,10 @@ export function defaultData(): AppData {
       readingNotes: "",
       defaultWorkplaceId: null,
       monthlyGoal: null,
+      backupReminderDays: 14,
+      lastBackupAt: null,
+      backupReminderSince: todayISO(),
+      backupSnoozedUntil: null,
     },
     workplaces: [],
     shifts: [],
