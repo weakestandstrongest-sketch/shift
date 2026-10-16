@@ -6,6 +6,12 @@ export interface Workplace {
   hourlyWage: number | null;
 }
 
+/** 休憩ルール: 拘束時間が minMinutes 以上なら breakMinutes 分の休憩 */
+export interface BreakRule {
+  minMinutes: number;
+  breakMinutes: number;
+}
+
 /** シフト表の記号 (例: 「早」= 9:00〜17:00) */
 export interface ShiftCode {
   code: string;
@@ -22,7 +28,8 @@ export interface Shift {
   /** HH:MM。start より前なら翌日終わり (夜勤) */
   end: string;
   workplaceId: string | null;
-  breakMinutes: number;
+  /** 休憩 (分)。null なら設定の休憩ルールから自動で決める */
+  breakMinutes: number | null;
   note: string;
   source: "manual" | "photo";
 }
@@ -35,6 +42,9 @@ export interface Settings {
   geminiApiKey: string;
   geminiModel: string;
   codes: ShiftCode[];
+  breakRules: BreakRule[];
+  /** AI に伝える、このシフト表の読み方 (記号や色の意味など) */
+  readingNotes: string;
   defaultWorkplaceId: string | null;
 }
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Store } from "../App";
 import type { Shift } from "../types";
-import { formatHours, newId, workMinutes } from "../lib/shift";
+import { formatHours, newId, ruleBreak, spanMinutes, workMinutes } from "../lib/shift";
 
 export function ShiftEditor({ store, shift, date, onClose }: { store: Store; shift: Shift | null; date: string; onClose: () => void }) {
   const { data } = store;
@@ -12,13 +12,15 @@ export function ShiftEditor({ store, shift, date, onClose }: { store: Store; shi
       start: "09:00",
       end: "17:00",
       workplaceId: data.settings.defaultWorkplaceId ?? data.workplaces[0]?.id ?? null,
-      breakMinutes: 0,
+      breakMinutes: null,
       note: "",
       source: "manual",
     },
   );
   const set = <K extends keyof Shift>(k: K, v: Shift[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const valid = Boolean(draft.date && draft.start && draft.end);
+  const rules = data.settings.breakRules;
+  const autoBreak = valid ? ruleBreak(spanMinutes(draft), rules) : 0;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -51,13 +53,14 @@ export function ShiftEditor({ store, shift, date, onClose }: { store: Store; shi
             </select>
           </label>
           <label>
-            休憩 (分)
+            休憩 (分・空欄で自動)
             <input
               type="number"
               min={0}
               step={15}
-              value={draft.breakMinutes}
-              onChange={(e) => set("breakMinutes", Math.max(0, Number(e.target.value) || 0))}
+              value={draft.breakMinutes ?? ""}
+              placeholder={`自動 (${autoBreak}分)`}
+              onChange={(e) => set("breakMinutes", e.target.value === "" ? null : Math.max(0, Number(e.target.value) || 0))}
             />
           </label>
         </div>
@@ -65,7 +68,12 @@ export function ShiftEditor({ store, shift, date, onClose }: { store: Store; shi
           メモ
           <input type="text" value={draft.note} onChange={(e) => set("note", e.target.value)} placeholder="例: レジ担当" />
         </label>
-        {valid && <p className="muted">勤務時間: {formatHours(workMinutes(draft))}</p>}
+        {valid && (
+          <p className="muted">
+            実働 {formatHours(workMinutes(draft, rules))} (休憩 {draft.breakMinutes ?? autoBreak}分
+            {draft.breakMinutes == null ? "・ルールから自動" : ""})
+          </p>
+        )}
         <div className="modal-actions">
           {shift && (
             <button

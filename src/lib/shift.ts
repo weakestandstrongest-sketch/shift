@@ -1,4 +1,4 @@
-import type { Shift, ShiftCode, Workplace } from "../types";
+import type { BreakRule, Shift, ShiftCode, Workplace } from "../types";
 import { timeToMinutes } from "./date";
 
 export function newId(): string {
@@ -7,12 +7,31 @@ export function newId(): string {
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** 勤務時間 (分)。終了が開始以前なら翌日にまたがる夜勤として扱う */
-export function workMinutes(shift: Pick<Shift, "start" | "end" | "breakMinutes">): number {
+type Times = Pick<Shift, "start" | "end" | "breakMinutes">;
+
+/** 拘束時間 (分)。終了が開始以前なら翌日にまたがる夜勤として扱う */
+export function spanMinutes(shift: Pick<Shift, "start" | "end">): number {
   const s = timeToMinutes(shift.start);
   let e = timeToMinutes(shift.end);
   if (e <= s) e += 24 * 60;
-  return Math.max(0, e - s - (shift.breakMinutes || 0));
+  return e - s;
+}
+
+/** 拘束時間に対して休憩ルールが決める休憩 (分) */
+export function ruleBreak(span: number, rules: BreakRule[]): number {
+  let b = 0;
+  for (const r of rules) if (span >= r.minMinutes && r.breakMinutes > b) b = r.breakMinutes;
+  return b;
+}
+
+/** 実際の休憩 (分)。手入力があればそれ、なければ休憩ルールから */
+export function breakOf(shift: Times, rules: BreakRule[]): number {
+  return shift.breakMinutes ?? ruleBreak(spanMinutes(shift), rules);
+}
+
+/** 実働時間 (分) = 拘束時間 − 休憩 */
+export function workMinutes(shift: Times, rules: BreakRule[] = []): number {
+  return Math.max(0, spanMinutes(shift) - breakOf(shift, rules));
 }
 
 export function formatHours(minutes: number): string {
@@ -21,10 +40,10 @@ export function formatHours(minutes: number): string {
   return m === 0 ? `${h}時間` : `${h}時間${m}分`;
 }
 
-export function shiftPay(shift: Shift, workplaces: Workplace[]): number | null {
+export function shiftPay(shift: Shift, workplaces: Workplace[], rules: BreakRule[] = []): number | null {
   const wp = workplaces.find((w) => w.id === shift.workplaceId);
   if (!wp || wp.hourlyWage == null) return null;
-  return Math.round((workMinutes(shift) / 60) * wp.hourlyWage);
+  return Math.round((workMinutes(shift, rules) / 60) * wp.hourlyWage);
 }
 
 export interface MonthSummary {
@@ -35,14 +54,14 @@ export interface MonthSummary {
   hasUnpriced: boolean;
 }
 
-export function summarize(shifts: Shift[], workplaces: Workplace[]): MonthSummary {
+export function summarize(shifts: Shift[], workplaces: Workplace[], rules: BreakRule[] = []): MonthSummary {
   const days = new Set(shifts.map((s) => s.date)).size;
   let minutes = 0;
   let pay = 0;
   let hasUnpriced = false;
   for (const s of shifts) {
-    minutes += workMinutes(s);
-    const p = shiftPay(s, workplaces);
+    minutes += workMinutes(s, rules);
+    const p = shiftPay(s, workplaces, rules);
     if (p == null) hasUnpriced = true;
     else pay += p;
   }

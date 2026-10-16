@@ -12,11 +12,12 @@ export function ListView({ store, ym, setYm }: { store: Store; ym: YM; setYm: (y
   const { data } = store;
   const [editing, setEditing] = useState<Shift | null>(null);
   const shifts = shiftsInMonth(data.shifts, ym.year, ym.month);
-  const total = summarize(shifts, data.workplaces);
+  const rules = data.settings.breakRules;
+  const total = summarize(shifts, data.workplaces, rules);
 
   const perWorkplace = [...data.workplaces, null].map((wp) => {
     const list = shifts.filter((s) => (wp ? s.workplaceId === wp.id : !data.workplaces.some((w) => w.id === s.workplaceId)));
-    return { wp, list, sum: summarize(list, data.workplaces) };
+    return { wp, list, sum: summarize(list, data.workplaces, rules) };
   });
 
   return (
@@ -49,7 +50,7 @@ export function ListView({ store, ym, setYm }: { store: Store; ym: YM; setYm: (y
         <div className="card list">
           {shifts.map((s) => {
             const wp = data.workplaces.find((w) => w.id === s.workplaceId);
-            const pay = shiftPay(s, data.workplaces);
+            const pay = shiftPay(s, data.workplaces, rules);
             return (
               <button key={s.id} className="shift-row" onClick={() => setEditing(s)}>
                 <span className="bar" style={{ background: wp?.color ?? "var(--accent)" }} />
@@ -58,7 +59,7 @@ export function ListView({ store, ym, setYm }: { store: Store; ym: YM; setYm: (y
                   {s.start}〜{s.end}
                 </span>
                 <span className="meta">
-                  {formatHours(workMinutes(s))}
+                  {formatHours(workMinutes(s, rules))}
                   {pay != null && ` ・ ¥${pay.toLocaleString()}`}
                 </span>
               </button>

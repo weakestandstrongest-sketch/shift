@@ -1,8 +1,16 @@
-import type { AppData } from "../types";
+import type { AppData, BreakRule } from "../types";
 
 const STORAGE_KEY = "shift-app:v1";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
+
+/** 初期値の休憩ルール (〜4h: なし / 4h15m〜: 45分 / 7h〜: 1h / 8h15m〜: 1h15m / 10h〜: 1h30m) */
+export const DEFAULT_BREAK_RULES: BreakRule[] = [
+  { minMinutes: 4 * 60 + 15, breakMinutes: 45 },
+  { minMinutes: 7 * 60, breakMinutes: 60 },
+  { minMinutes: 8 * 60 + 15, breakMinutes: 75 },
+  { minMinutes: 10 * 60, breakMinutes: 90 },
+];
 
 export const WORKPLACE_COLORS = ["#2f80ed", "#eb5757", "#27ae60", "#f2994a", "#9b51e0", "#00a3a3", "#d6336c", "#828282"];
 
@@ -15,6 +23,8 @@ export function defaultData(): AppData {
       geminiApiKey: "",
       geminiModel: DEFAULT_GEMINI_MODEL,
       codes: [],
+      breakRules: DEFAULT_BREAK_RULES,
+      readingNotes: "",
       defaultWorkplaceId: null,
     },
     workplaces: [],

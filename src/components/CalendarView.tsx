@@ -18,7 +18,8 @@ export function CalendarView({ store, ym, setYm }: { store: Store; ym: YM; setYm
     byDate.set(s.date, list);
   }
   const color = (s: Shift) => data.workplaces.find((w) => w.id === s.workplaceId)?.color ?? "var(--accent)";
-  const summary = summarize(shiftsInMonth(data.shifts, ym.year, ym.month), data.workplaces);
+  const rules = data.settings.breakRules;
+  const summary = summarize(shiftsInMonth(data.shifts, ym.year, ym.month), data.workplaces, rules);
   const today = todayISO();
   const dayShifts = selected ? sortShifts(byDate.get(selected) ?? []) : [];
 
@@ -85,7 +86,7 @@ export function CalendarView({ store, ym, setYm }: { store: Store; ym: YM; setYm
                   {s.start}〜{s.end}
                 </span>
                 <span className="meta">
-                  {wp?.name ?? "勤務先未設定"} ・ {formatHours(workMinutes(s))}
+                  {wp?.name ?? "勤務先未設定"} ・ {formatHours(workMinutes(s, rules))}
                   {s.note && <em> ・ {s.note}</em>}
                 </span>
               </button>

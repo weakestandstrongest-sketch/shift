@@ -88,7 +88,7 @@ export function ImportView({
       start: c.start,
       end: c.end,
       workplaceId,
-      breakMinutes: 0,
+      breakMinutes: null,
       note: c.note,
       source: "photo",
     }));

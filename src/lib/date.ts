@@ -73,6 +73,20 @@ export function normalizeTime(s: string | null | undefined): string | null {
   return null;
 }
 
+/**
+ * マスの文字から開始・終了時刻を読む。
+ * 「1915F2115」「930F16」「16F20」(F 区切り) や「9-17」「9:00〜17:00」に対応。
+ * 終了が書かれていない「17-L」などは end を null にする。読めなければ null
+ */
+export function parseTimeRange(raw: string): { start: string; end: string | null } | null {
+  const t = raw.normalize("NFKC").replace(/\s/g, "");
+  const m = t.match(/^(\d{1,2}(?::\d{2})?|\d{3,4})(?:F|f|-|~|〜|～|ー)(.*)$/);
+  if (!m) return null;
+  const start = normalizeTime(m[1]);
+  if (!start) return null;
+  return { start, end: normalizeTime(m[2]) };
+}
+
 export function timeToMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { Store } from "../App";
-import type { Settings, ShiftCode, Workplace } from "../types";
+import type { BreakRule, Settings, ShiftCode, Workplace } from "../types";
 import { newId } from "../lib/shift";
-import { DEFAULT_GEMINI_MODEL, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
+import { DEFAULT_BREAK_RULES, DEFAULT_GEMINI_MODEL, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
 import { todayISO } from "../lib/date";
 
 export function SettingsView({ store }: { store: Store }) {
@@ -15,6 +15,12 @@ export function SettingsView({ store }: { store: Store }) {
 
   const setWorkplaces = (fn: (w: Workplace[]) => Workplace[]) => setData((d) => ({ ...d, workplaces: fn(d.workplaces) }));
   const setCodes = (fn: (c: ShiftCode[]) => ShiftCode[]) => setSettings({ codes: fn(settings.codes) });
+  const setRules = (fn: (r: BreakRule[]) => BreakRule[]) => setSettings({ breakRules: fn(settings.breakRules) });
+  const toHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+  const fromHHMM = (s: string) => {
+    const [h, m] = s.split(":").map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
 
   return (
     <div>
@@ -172,6 +178,57 @@ export function SettingsView({ store }: { store: Store }) {
           </div>
         ))}
         <button onClick={() => setCodes((cs) => [...cs, { code: "", start: "09:00", end: "17:00" }])}>＋ 記号を追加</button>
+      </section>
+
+      <section className="card">
+        <h3>休憩ルール</h3>
+        <p className="muted">
+          拘束時間 (開始〜終了) が左の時間以上なら、右の分だけ休憩を自動で引いて実働時間と給料を計算します。シフトごとに手入力した休憩があればそちらを使います。
+        </p>
+        {[...settings.breakRules]
+          .map((r, i) => ({ r, i }))
+          .sort((a, b) => a.r.minMinutes - b.r.minMinutes)
+          .map(({ r, i }) => (
+            <div key={i} className="rule-edit">
+              <input
+                type="time"
+                aria-label="拘束時間"
+                value={toHHMM(r.minMinutes)}
+                onChange={(e) => setRules((rs) => rs.map((x, j) => (j === i ? { ...x, minMinutes: fromHHMM(e.target.value) } : x)))}
+              />
+              <span>以上→休憩</span>
+              <input
+                type="number"
+                min={0}
+                step={15}
+                aria-label="休憩 (分)"
+                value={r.breakMinutes}
+                onChange={(e) => setRules((rs) => rs.map((x, j) => (j === i ? { ...x, breakMinutes: Math.max(0, Number(e.target.value) || 0) } : x)))}
+              />
+              <span>分</span>
+              <button className="icon-btn" aria-label="削除" onClick={() => setRules((rs) => rs.filter((_, j) => j !== i))}>
+                🗑
+              </button>
+            </div>
+          ))}
+        {settings.breakRules.length === 0 && <p className="muted">ルールがないので、休憩は 0 分として計算します。</p>}
+        <div className="photo-buttons">
+          <button onClick={() => setRules((rs) => [...rs, { minMinutes: 6 * 60, breakMinutes: 45 }])}>＋ ルールを追加</button>
+          <button onClick={() => setSettings({ breakRules: DEFAULT_BREAK_RULES })}>初期設定に戻す</button>
+        </div>
+      </section>
+
+      <section className="card">
+        <h3>シフト表の読み方メモ</h3>
+        <p className="muted">
+          記号や色の意味など、あなたのシフト表だけのルールを書いておくと、写真を読み取るときに AI に伝えます。
+        </p>
+        <textarea
+          rows={5}
+          value={settings.readingNotes}
+          placeholder={"例:\n・「*」は休み\n・「有」は有給休暇\n・時間が書かれていない緑のマスは他店勤務"}
+          onChange={(e) => setSettings({ readingNotes: e.target.value })}
+        />
       </section>
 
       <section className="card">

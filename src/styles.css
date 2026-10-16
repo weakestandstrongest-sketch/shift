@@ -131,7 +131,8 @@ button.wide {
 }
 
 input,
-select {
+select,
+textarea {
   font: inherit;
   font-size: 16px; /* iOS のズームを防ぐ */
   width: 100%;
@@ -568,6 +569,27 @@ summary {
 .wp-edit input[type="number"] {
   width: 90px;
   flex: none;
+}
+.rule-edit {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.rule-edit input[type="time"] {
+  flex: 1;
+  min-width: 0;
+  max-width: 130px;
+}
+.rule-edit input[type="number"] {
+  width: 64px;
+  flex: none;
+}
+textarea {
+  resize: vertical;
+  line-height: 1.5;
 }
 .code-edit input:first-child {
   width: 64px;
