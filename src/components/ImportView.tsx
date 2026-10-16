@@ -27,7 +27,7 @@ export function ImportView({
   const cameraRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
 
-  const hasKey = Boolean(settings.provider === "claude" ? settings.apiKey : settings.geminiApiKey);
+  const hasKey = Boolean(settings.geminiApiKey);
   const ready = Boolean(settings.myName.trim() && hasKey);
 
   async function addFiles(files: FileList | null) {
@@ -109,7 +109,7 @@ export function ImportView({
         <ul>
           <li className={settings.myName.trim() ? "done" : ""}>自分の名前 (シフト表に書かれている名前)</li>
           <li className={hasKey ? "done" : ""}>
-            {settings.provider === "claude" ? "Anthropic API キー" : "Gemini API キー (無料で取得できます)"} — 写真の読み取りに使います
+            Gemini API キー (無料で取得できます) — 写真の読み取りに使います
           </li>
         </ul>
         <button className="primary" onClick={goSettings}>

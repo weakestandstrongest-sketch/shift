@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Extraction } from "../extract";
+import type { Extraction } from "./extract";
 
 // モデルの出力は多少ゆれる前提で、足りない項目は既定値で補う
 const LooseSchema = z.object({

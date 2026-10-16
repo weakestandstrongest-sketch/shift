@@ -2,7 +2,6 @@ import type { AppData } from "../types";
 
 const STORAGE_KEY = "shift-app:v1";
 
-export const DEFAULT_MODEL = "claude-opus-5-5";
 export const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
 
 export const WORKPLACE_COLORS = ["#2f80ed", "#eb5757", "#27ae60", "#f2994a", "#9b51e0", "#00a3a3", "#d6336c", "#828282"];
@@ -13,11 +12,8 @@ export function defaultData(): AppData {
     settings: {
       myName: "",
       aliases: [],
-      provider: "gemini",
       geminiApiKey: "",
       geminiModel: DEFAULT_GEMINI_MODEL,
-      apiKey: "",
-      model: DEFAULT_MODEL,
       codes: [],
       defaultWorkplaceId: null,
     },
@@ -31,9 +27,11 @@ export function migrate(raw: unknown): AppData {
   const base = defaultData();
   if (!raw || typeof raw !== "object") return base;
   const r = raw as Partial<AppData>;
-  const settings = { ...base.settings, ...(r.settings ?? {}) };
-  // provider が無い古いデータで、Claude のキーを登録済みなら Claude のまま使う
-  if (!r.settings?.provider && r.settings?.apiKey) settings.provider = "claude";
+  // 既知の項目だけを取り出す (以前の版にあった不要な項目は捨てる)
+  const s = (r.settings ?? {}) as Partial<AppData["settings"]>;
+  const settings = Object.fromEntries(
+    Object.entries(base.settings).map(([k, v]) => [k, s[k as keyof typeof s] ?? v]),
+  ) as AppData["settings"];
   return {
     version: 1,
     settings,
@@ -61,7 +59,7 @@ export function saveData(data: AppData): void {
 
 /** バックアップ用。API キーは書き出さない */
 export function exportJSON(data: AppData): string {
-  return JSON.stringify({ ...data, settings: { ...data.settings, apiKey: "", geminiApiKey: "" } }, null, 2);
+  return JSON.stringify({ ...data, settings: { ...data.settings, geminiApiKey: "" } }, null, 2);
 }
 
 export function downloadFile(filename: string, content: string, type: string): void {

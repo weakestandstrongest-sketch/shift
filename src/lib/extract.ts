@@ -1,28 +1,24 @@
-import { z } from "zod";
 import type { Settings, Shift, ShiftCode } from "../types";
 import { isValidISODate, normalizeTime, todayISO } from "./date";
 import type { PreparedImage } from "./image";
 import { isDuplicate, lookupCode, newId } from "./shift";
 
-export const ExtractionSchema = z.object({
+/** 写真から読み取った結果 */
+export interface Extraction {
   /** シフト表の中で本人として扱った表記。見つからなければ null */
-  matched_name: z.string().nullable(),
+  matched_name: string | null;
   /** 本人が見つからなかったときに、表に載っていた名前の一覧 */
-  names_in_table: z.array(z.string()),
-  shifts: z.array(
-    z.object({
-      date: z.string(),
-      raw: z.string(),
-      start: z.string().nullable(),
-      end: z.string().nullable(),
-      note: z.string(),
-      uncertain: z.boolean(),
-    }),
-  ),
-  warnings: z.array(z.string()),
-});
-
-export type Extraction = z.infer<typeof ExtractionSchema>;
+  names_in_table: string[];
+  shifts: {
+    date: string;
+    raw: string;
+    start: string | null;
+    end: string | null;
+    note: string;
+    uncertain: boolean;
+  }[];
+  warnings: string[];
+}
 
 export const SYSTEM_PROMPT = `あなたは、アルバイトやパートのシフト表の写真から、指定された1人分の勤務予定を正確に読み取るアシスタントです。
 
@@ -57,8 +53,7 @@ export function buildUserText(settings: Settings, targetMonth: string | null): s
 
 export class ExtractionError extends Error {}
 
-/** 各 AI の呼び出し部分。SDK が大きいので、使うものだけ読み込む */
-export interface ProviderRequest {
+export interface GeminiRequest {
   images: PreparedImage[];
   system: string;
   userText: string;
@@ -66,20 +61,21 @@ export interface ProviderRequest {
   model: string;
 }
 
-/** 写真 (複数枚可) を AI に送り、本人のシフトを読み取る */
+/** 写真 (複数枚可) を Gemini に送り、本人のシフトを読み取る */
 export async function extractShifts(images: PreparedImage[], settings: Settings, targetMonth: string | null): Promise<Extraction> {
   if (!settings.myName.trim()) throw new ExtractionError("設定画面で自分の名前を入力してください。");
-  const userText = buildUserText(settings, targetMonth);
-
-  // API キーは利用者の端末内だけに保存し、ブラウザから各社の API を直接呼び出す (個人用アプリとしての設計)
-  if (settings.provider === "claude") {
-    if (!settings.apiKey) throw new ExtractionError("設定画面で Anthropic API キーを入力してください。");
-    const { extractWithClaude } = await import("./providers/claude");
-    return extractWithClaude({ images, system: SYSTEM_PROMPT, userText, apiKey: settings.apiKey, model: settings.model });
-  }
   if (!settings.geminiApiKey) throw new ExtractionError("設定画面で Gemini API キーを入力してください。");
-  const { extractWithGemini } = await import("./providers/gemini");
-  return extractWithGemini({ images, system: SYSTEM_PROMPT, userText, apiKey: settings.geminiApiKey, model: settings.geminiModel });
+
+  // API キーは利用者の端末内だけに保存し、ブラウザから Gemini API を直接呼び出す (個人用アプリとしての設計)。
+  // SDK が大きいので、読み取りのときだけ読み込む
+  const { extractWithGemini } = await import("./gemini");
+  return extractWithGemini({
+    images,
+    system: SYSTEM_PROMPT,
+    userText: buildUserText(settings, targetMonth),
+    apiKey: settings.geminiApiKey,
+    model: settings.geminiModel,
+  });
 }
 
 /** 取り込み画面で確認・修正するための候補 */

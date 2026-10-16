@@ -542,26 +542,6 @@ label {
 }
 
 /* 設定 */
-.segmented {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.segmented button {
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px;
-}
-.segmented button.on {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.segmented small {
-  font-size: 12px;
-  color: var(--muted);
-}
 .notice {
   font-size: 13px;
   background: var(--warn-bg);

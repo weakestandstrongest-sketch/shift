@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { migrate } from "../storage";
+import { migrate } from "./storage";
 import { parseGeminiJSON } from "./geminiParse";
 
 describe("parseGeminiJSON", () => {
@@ -31,13 +31,12 @@ describe("parseGeminiJSON", () => {
   });
 });
 
-describe("migrate provider", () => {
-  it("defaults new data to gemini", () => {
-    expect(migrate({}).settings.provider).toBe("gemini");
-  });
-  it("keeps users who already set a Claude key on claude", () => {
-    const d = migrate({ settings: { myName: "山田", apiKey: "sk-ant-x" } });
-    expect(d.settings.provider).toBe("claude");
+describe("migrate", () => {
+  it("fills defaults and drops settings from older versions", () => {
+    const d = migrate({ settings: { myName: "山田", apiKey: "sk-ant-x", provider: "claude", model: "x" } });
+    expect(d.settings.myName).toBe("山田");
     expect(d.settings.geminiModel).toBe("gemini-flash-latest");
+    expect(d.settings).not.toHaveProperty("apiKey");
+    expect(d.settings).not.toHaveProperty("provider");
   });
 });

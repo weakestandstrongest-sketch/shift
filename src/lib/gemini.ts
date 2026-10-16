@@ -1,6 +1,6 @@
 import { ApiError, createPartFromBase64, createUserContent, FinishReason, GoogleGenAI } from "@google/genai";
-import { ExtractionError, type Extraction, type ProviderRequest } from "../extract";
-import { DEFAULT_GEMINI_MODEL } from "../storage";
+import { ExtractionError, type Extraction, type GeminiRequest } from "./extract";
+import { DEFAULT_GEMINI_MODEL } from "./storage";
 import { parseGeminiJSON } from "./geminiParse";
 
 // Gemini が対応する JSON Schema の範囲に収まるよう、null や anyOf を使わない形にする
@@ -33,7 +33,7 @@ const GEMINI_NOTE = "\n\n※ 回答では null の代わりに空文字 \"\" を
 
 const BLOCKED: string[] = [FinishReason.SAFETY, FinishReason.PROHIBITED_CONTENT, FinishReason.BLOCKLIST, FinishReason.SPII, FinishReason.RECITATION];
 
-export async function extractWithGemini({ images, system, userText, apiKey, model }: ProviderRequest): Promise<Extraction> {
+export async function extractWithGemini({ images, system, userText, apiKey, model }: GeminiRequest): Promise<Extraction> {
   const ai = new GoogleGenAI({ apiKey });
   try {
     const res = await ai.models.generateContent({
