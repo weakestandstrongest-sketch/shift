@@ -85,6 +85,10 @@ describe("1 回分の編集・削除", () => {
     expect(dates(deleteOccurrence([series], "e1", "2026-10-19", "future"), "2026-10-01", "2026-12-31")).toEqual(["2026-10-05", "2026-10-12"]);
     expect(deleteOccurrence([series], "e1", "2026-10-05", "future")).toEqual([]);
   });
+  it("すべての繰り返しを削除 (ほかの予定は残る)", () => {
+    const other = ev("2026-10-06", null, { id: "e2" });
+    expect(deleteOccurrence([series, other], "e1", "2026-10-19", "all")).toEqual([other]);
+  });
   it("1 回も残らなくなったら予定ごと消える", () => {
     const two = ev("2026-10-05", { freq: "daily" }, { until: "2026-10-06" });
     const once = deleteOccurrence([two], "e1", "2026-10-05", "this");

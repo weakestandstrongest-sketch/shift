@@ -143,12 +143,15 @@ export function editOccurrence(events: CalEvent[], seriesId: string, occDate: st
   return [...others, ...(ended ? [ended] : []), next];
 }
 
-/** 繰り返しの予定の 1 回分を消す (this: その日だけ / future: その日以降すべて) */
-export function deleteOccurrence(events: CalEvent[], seriesId: string, occDate: string, scope: Scope): CalEvent[] {
+/** 消すときは「すべて」も選べる */
+export type DeleteScope = Scope | "all";
+
+/** 繰り返しの予定の 1 回分を消す (this: その日だけ / future: その日以降すべて / all: 繰り返しをまるごと) */
+export function deleteOccurrence(events: CalEvent[], seriesId: string, occDate: string, scope: DeleteScope): CalEvent[] {
   const series = events.find((e) => e.id === seriesId);
   if (!series) return events;
   const others = events.filter((e) => e.id !== seriesId);
-  if (!series.repeat) return others;
+  if (!series.repeat || scope === "all") return others;
   if (scope === "this") {
     const updated = { ...series, exdates: addExdate(series.exdates, occDate) };
     // 1 回も残らなくなったら予定ごと消す

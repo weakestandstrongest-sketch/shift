@@ -10,7 +10,7 @@ import { SettingsView } from "./components/SettingsView";
 import { ShiftSheet } from "./components/ShiftSheet";
 import { EventSheet } from "./components/EventSheet";
 import { ActionSheet, type Action } from "./components/ActionSheet";
-import { deleteOccurrence, type Scope } from "./lib/repeat";
+import { deleteOccurrence, type DeleteScope } from "./lib/repeat";
 import { Icon, type IconName } from "./components/Icon";
 import { Splash } from "./components/Splash";
 
@@ -137,17 +137,21 @@ export default function App() {
       showToast({ message: `「${e.title}」を削除しました`, undo });
       return after?.();
     }
-    const run = (scope: Scope) => {
+    const run = (scope: DeleteScope) => {
       setAsk(null);
       store.setData((d) => ({ ...d, events: deleteOccurrence(d.events, series.id, e.date, scope) }));
-      showToast({ message: scope === "this" ? `この日の「${e.title}」を削除しました` : `これ以降の「${e.title}」を削除しました`, undo });
+      const what = { this: "この日の", future: "これ以降の", all: "すべての" }[scope];
+      showToast({ message: `${what}「${e.title}」を削除しました`, undo });
       after?.();
     };
+    const d = parseISODate(e.date);
     setAsk({
       title: "これは繰り返しの予定です",
       actions: [
-        { label: "この日の予定だけ削除", danger: true, onClick: () => run("this") },
-        { label: "これ以降の予定をすべて削除", danger: true, onClick: () => run("future") },
+        { label: `${d.getMonth() + 1}/${d.getDate()} の予定だけ削除`, danger: true, onClick: () => run("this") },
+        // 最初の日なら「これ以降」は「すべて」と同じなので出さない
+        ...(e.date > series.date ? [{ label: "これ以降の予定を削除", danger: true, onClick: () => run("future") }] : []),
+        { label: "すべての繰り返しを削除", danger: true, onClick: () => run("all") },
       ],
     });
   };
