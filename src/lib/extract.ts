@@ -196,3 +196,44 @@ export function toCandidates(
   off.sort((a, b) => a.date.localeCompare(b.date));
   return { work, off };
 }
+
+/** 読み取った表が対象にしている期間 (最初の日〜最後の日)。日付がなければ null */
+export function coveredRange(result: Extraction): { from: string; to: string } | null {
+  const dates = result.days.map((d) => d.date).filter(isValidISODate).sort();
+  return dates.length ? { from: dates[0], to: dates[dates.length - 1] } : null;
+}
+
+/**
+ * 取り込んだシフトを今のデータに合わせる。
+ * range を渡すと「新しいシフト表で置き換える」: その期間の古い予定は新しい表に合わせて入れ替える。
+ * 時間が同じシフトは古いもの (休憩やメモの手直しを含む) をそのまま残す。
+ */
+export function mergeImport(
+  existingShifts: Shift[],
+  existingDaysOff: DayOff[],
+  newShifts: Shift[],
+  newDaysOff: DayOff[],
+  range: { from: string; to: string } | null,
+): { shifts: Shift[]; daysOff: DayOff[]; added: Shift[]; removed: Shift[] } {
+  const same = (a: Shift, b: Shift) => a.date === b.date && a.start === b.start && a.end === b.end;
+  const added = newShifts.filter((n) => !existingShifts.some((e) => same(e, n)));
+  const offDates = new Set(newDaysOff.map((d) => d.date));
+
+  if (!range) {
+    return {
+      shifts: [...existingShifts, ...added],
+      daysOff: [...existingDaysOff.filter((d) => !offDates.has(d.date)), ...newDaysOff],
+      added,
+      removed: [],
+    };
+  }
+
+  const inRange = (date: string) => date >= range.from && date <= range.to;
+  const removed = existingShifts.filter((e) => inRange(e.date) && !newShifts.some((n) => same(e, n)));
+  return {
+    shifts: [...existingShifts.filter((e) => !removed.includes(e)), ...added],
+    daysOff: [...existingDaysOff.filter((d) => !inRange(d.date) && !offDates.has(d.date)), ...newDaysOff],
+    added,
+    removed,
+  };
+}

@@ -1212,6 +1212,37 @@ summary {
   background: var(--card-2);
   color: var(--muted);
 }
+.replace-box {
+  background: var(--card-2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 10px 0 6px;
+}
+.check-line {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+}
+.removed-head {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--danger);
+  margin: 8px 0 4px;
+}
+.removed-list {
+  list-style: none;
+  padding: 0 !important;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.removed-list li {
+  text-decoration: line-through;
+  padding: 2px 0;
+}
 .sub-head {
   margin: 18px 0 4px;
 }
