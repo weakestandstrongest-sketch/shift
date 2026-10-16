@@ -9,6 +9,8 @@ import { ListView } from "./components/ListView";
 import { SettingsView } from "./components/SettingsView";
 import { ShiftSheet } from "./components/ShiftSheet";
 import { EventSheet } from "./components/EventSheet";
+import { ActionSheet, type Action } from "./components/ActionSheet";
+import { deleteOccurrence, type Scope } from "./lib/repeat";
 import { Icon, type IconName } from "./components/Icon";
 import { Splash } from "./components/Splash";
 
@@ -55,6 +57,7 @@ export default function App() {
   const [selected, setSelected] = useState(todayISO());
   const [sheet, setSheet] = useState<SheetState>(null);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [ask, setAsk] = useState<{ title: string; actions: Action[] } | null>(null);
   const [splash, setSplash] = useState(true);
   const hideSplash = useCallback(() => setSplash(false), []);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -125,9 +128,28 @@ export default function App() {
     store.deleteShift(s.id);
     showToast({ message: `${s.start}〜${s.end} のシフトを削除しました`, undo: () => store.upsertShift(s) });
   };
-  const deleteEventWithUndo = (e: CalEvent) => {
-    store.deleteEvent(e.id);
-    showToast({ message: `「${e.title}」を削除しました`, undo: () => store.upsertEvent(e) });
+  /** 予定を削除して「元に戻す」を出す。繰り返しの予定なら、どこまで消すか先に聞く (e はその日の 1 回分) */
+  const deleteEventWithUndo = (e: CalEvent, after?: () => void) => {
+    const series = data.events.find((x) => x.id === e.id) ?? e;
+    const undo = () => store.upsertEvent(series);
+    if (!series.repeat) {
+      store.deleteEvent(e.id);
+      showToast({ message: `「${e.title}」を削除しました`, undo });
+      return after?.();
+    }
+    const run = (scope: Scope) => {
+      setAsk(null);
+      store.setData((d) => ({ ...d, events: deleteOccurrence(d.events, series.id, e.date, scope) }));
+      showToast({ message: scope === "this" ? `この日の「${e.title}」を削除しました` : `これ以降の「${e.title}」を削除しました`, undo });
+      after?.();
+    };
+    setAsk({
+      title: "これは繰り返しの予定です",
+      actions: [
+        { label: "この日の予定だけ削除", danger: true, onClick: () => run("this") },
+        { label: "これ以降の予定をすべて削除", danger: true, onClick: () => run("future") },
+      ],
+    });
   };
   const clearOffWithUndo = (date: string, type: OffType) => {
     store.setDayOff(date, null);
@@ -172,6 +194,8 @@ export default function App() {
         {tab === "list" && <ListView store={store} ym={ym} setYm={setYm} onEdit={(s) => setSheet({ kind: "shift", shift: s, date: s.date })} />}
         {tab === "settings" && <SettingsView store={store} />}
       </main>
+
+      {ask && <ActionSheet title={ask.title} actions={ask.actions} onCancel={() => setAsk(null)} />}
 
       {toast && (
         <div className="toast" role="status">
@@ -273,7 +297,7 @@ export default function App() {
       )}
       {sheet?.kind === "event" && (
         <EventSheet
-          key={`event-${sheet.event?.id ?? "new"}`}
+          key={`event-${sheet.event ? `${sheet.event.id}@${sheet.event.date}` : "new"}`}
           store={store}
           event={sheet.event}
           date={sheet.date}
@@ -282,10 +306,7 @@ export default function App() {
             selectDate(date);
             showToast({ message });
           }}
-          onDelete={(e) => {
-            deleteEventWithUndo(e);
-            setSheet(null);
-          }}
+          onDelete={(e) => deleteEventWithUndo(e, () => setSheet(null))}
           onSwitchToShift={(date) => setSheet({ kind: "shift", shift: null, date })}
         />
       )}

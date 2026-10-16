@@ -5,6 +5,7 @@ import { addDays, addMonths, calendarGrid, isValidISODate, parseISODate, todayIS
 import { formatHours, isFinished, shiftsInMonth, sortShifts, summarize, workMinutes } from "../lib/shift";
 import { Icon } from "./Icon";
 import { MonthGrid } from "./MonthGrid";
+import { expandEvents, repeatLabel } from "../lib/repeat";
 import type { YM } from "./MonthNav";
 
 interface Props {
@@ -34,14 +35,17 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onEditE
   const byDate = new Map<string, Shift[]>();
   for (const s of sortShifts(data.shifts)) byDate.set(s.date, [...(byDate.get(s.date) ?? []), s]);
   const offByDate = new Map(data.daysOff.map((d) => [d.date, d.type]));
-  const eventsByDate = new Map<string, CalEvent[]>();
-  for (const e of [...data.events].sort(eventOrder)) eventsByDate.set(e.date, [...(eventsByDate.get(e.date) ?? []), e]);
-  const colorOf = (s: Shift) => data.workplaces.find((w) => w.id === s.workplaceId)?.color ?? "var(--accent)";
-  const placeOf = (s: Shift) => data.workplaces.find((w) => w.id === s.workplaceId)?.name ?? "";
-
   // 6 週目が丸ごと翌月なら表示しない
   let cells = calendarGrid(ym.year, ym.month);
   if (!cells.slice(35).some((c) => c.inMonth)) cells = cells.slice(0, 35);
+
+  // 繰り返しの予定は、表示している範囲 (と選んだ日) の 1 回ずつに広げる
+  const from = selected < cells[0].iso ? selected : cells[0].iso;
+  const to = selected > cells[cells.length - 1].iso ? selected : cells[cells.length - 1].iso;
+  const eventsByDate = new Map<string, CalEvent[]>();
+  for (const e of expandEvents(data.events, from, to).sort(eventOrder)) eventsByDate.set(e.date, [...(eventsByDate.get(e.date) ?? []), e]);
+  const colorOf = (s: Shift) => data.workplaces.find((w) => w.id === s.workplaceId)?.color ?? "var(--accent)";
+  const placeOf = (s: Shift) => data.workplaces.find((w) => w.id === s.workplaceId)?.name ?? "";
 
   // 今月のバイト
   const monthShifts = shiftsInMonth(data.shifts, ym.year, ym.month);
@@ -201,11 +205,20 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onEditE
                 <span className="item-bar" style={{ background: it.event.color }} />
                 <span className="item-body">
                   <strong>{it.event.title}</strong>
-                  {(it.event.start || it.event.note) && (
+                  {(it.event.start || it.event.note || it.event.repeat) && (
                     <small>
-                      {it.event.start && `${it.event.start}${it.event.end ? `〜${it.event.end}` : ""}`}
-                      {it.event.start && it.event.note && "・"}
-                      {it.event.note}
+                      {[
+                        it.event.start && `${it.event.start}${it.event.end ? `〜${it.event.end}` : ""}`,
+                        it.event.repeat && (
+                          <span key="r" className="repeat-note">
+                            <Icon name="repeat" size={12} strokeWidth={2.2} />
+                            {repeatLabel(it.event)}
+                          </span>
+                        ),
+                        it.event.note,
+                      ]
+                        .filter(Boolean)
+                        .flatMap((x, i) => (i ? ["・", x] : [x]))}
                     </small>
                   )}
                 </span>

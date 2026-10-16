@@ -70,7 +70,27 @@ export interface CalEvent {
   end: string | null;
   color: string;
   note: string;
+  /** 繰り返し。なし (null / 未設定) なら date の 1 回だけ */
+  repeat?: Repeat | null;
+  /** 繰り返しの終了日 (この日まで)。null なら終わりなし */
+  until?: string | null;
+  /** 繰り返しのうち、消した (または別の予定に切り離した) 日 */
+  exdates?: string[];
 }
+
+/** 予定の繰り返し方。曜日は 0 = 日 〜 6 = 土。日付・月は予定の date (最初の日) から決まる */
+export type Repeat =
+  | { freq: "daily" }
+  /** 平日 (月〜金) */
+  | { freq: "weekdays" }
+  /** 毎週、選んだ曜日 */
+  | { freq: "weekly"; days: number[] }
+  /** 毎月、最初の日と同じ日にち (その日がない月はとばす) */
+  | { freq: "monthly" }
+  /** 毎月第 nth の weekday 曜日 (nth = -1 は最終) */
+  | { freq: "monthlyNth"; nth: number; weekday: number }
+  /** 毎年、最初の日と同じ月日 */
+  | { freq: "yearly" };
 
 export interface Settings {
   myName: string;

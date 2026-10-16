@@ -1,4 +1,4 @@
-import type { AppData, BreakRule, ColorBreak, OffSymbol } from "../types";
+import type { AppData, BreakRule, CalEvent, ColorBreak, OffSymbol, Repeat } from "../types";
 
 const STORAGE_KEY = "shift-app:v1";
 
@@ -79,7 +79,48 @@ export function migrate(raw: unknown): AppData {
     workplaces: Array.isArray(r.workplaces) ? r.workplaces : [],
     shifts: Array.isArray(r.shifts) ? r.shifts : [],
     daysOff: Array.isArray(r.daysOff) ? r.daysOff : [],
-    events: Array.isArray(r.events) ? r.events : [],
+    events: Array.isArray(r.events) ? r.events.filter(isEventLike).map(cleanEvent) : [],
+  };
+}
+
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+const isEventLike = (e: unknown): e is CalEvent =>
+  !!e && typeof e === "object" && typeof (e as CalEvent).id === "string" && ISO.test(String((e as CalEvent).date));
+
+/** 繰り返しの形が壊れていたら (手で書き換えたバックアップなど) 繰り返しなしにする */
+function cleanRepeat(r: unknown): Repeat | null {
+  if (!r || typeof r !== "object") return null;
+  const x = r as Record<string, unknown>;
+  const day = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 6;
+  switch (x.freq) {
+    case "daily":
+    case "weekdays":
+    case "monthly":
+    case "yearly":
+      return { freq: x.freq };
+    case "weekly": {
+      const days = Array.isArray(x.days) ? [...new Set(x.days.filter(day) as number[])].sort((a, b) => a - b) : [];
+      return days.length ? { freq: "weekly", days } : null;
+    }
+    case "monthlyNth":
+      return day(x.weekday) && [-1, 1, 2, 3, 4, 5].includes(x.nth as number) ? { freq: "monthlyNth", nth: x.nth as number, weekday: x.weekday as number } : null;
+    default:
+      return null;
+  }
+}
+
+function cleanEvent(e: CalEvent): CalEvent {
+  const repeat = cleanRepeat(e.repeat);
+  return {
+    ...e,
+    title: typeof e.title === "string" ? e.title : "",
+    start: typeof e.start === "string" ? e.start : null,
+    end: typeof e.end === "string" ? e.end : null,
+    color: typeof e.color === "string" ? e.color : EVENT_COLORS[0].color,
+    note: typeof e.note === "string" ? e.note : "",
+    repeat,
+    until: repeat && typeof e.until === "string" && ISO.test(e.until) ? e.until : null,
+    exdates: repeat && Array.isArray(e.exdates) ? e.exdates.filter((x) => typeof x === "string" && ISO.test(x)) : [],
   };
 }
 
