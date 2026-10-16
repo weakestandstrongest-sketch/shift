@@ -1,9 +1,14 @@
 import { useState } from "react";
 import type { Store } from "../App";
-import type { Settings, ShiftCode, Workplace } from "../types";
+import type { Provider, Settings, ShiftCode, Workplace } from "../types";
 import { newId } from "../lib/shift";
-import { DEFAULT_MODEL, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
+import { DEFAULT_GEMINI_MODEL, DEFAULT_MODEL, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
 import { todayISO } from "../lib/date";
+
+const PROVIDERS: { id: Provider; label: string; sub: string }[] = [
+  { id: "gemini", label: "Gemini", sub: "無料枠あり" },
+  { id: "claude", label: "Claude", sub: "有料・高精度" },
+];
 
 const MODELS = [
   { id: DEFAULT_MODEL, label: "Claude Opus 5.5 (おすすめ・高精度)" },
@@ -50,36 +55,95 @@ export function SettingsView({ store }: { store: Store }) {
       </section>
 
       <section className="card">
-        <h3>写真の読み取り (Claude)</h3>
-        <label>
-          Anthropic API キー
-          <div className="inline">
-            <input
-              type={showKey ? "text" : "password"}
-              value={settings.apiKey}
-              placeholder="sk-ant-..."
-              autoComplete="off"
-              onChange={(e) => setSettings({ apiKey: e.target.value.trim() })}
-            />
-            <button onClick={() => setShowKey((v) => !v)}>{showKey ? "隠す" : "表示"}</button>
-          </div>
-          <small className="muted">
-            キーは この端末の中だけ に保存され、写真の読み取り時に Anthropic へ直接送られます。
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-              キーの発行はこちら
-            </a>
-          </small>
-        </label>
-        <label>
-          モデル
-          <select value={settings.model} onChange={(e) => setSettings({ model: e.target.value })}>
-            {MODELS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <h3>写真の読み取り</h3>
+        <div className="segmented" role="radiogroup" aria-label="読み取りに使う AI">
+          {PROVIDERS.map((p) => (
+            <button
+              key={p.id}
+              role="radio"
+              aria-checked={settings.provider === p.id}
+              className={settings.provider === p.id ? "on" : ""}
+              onClick={() => setSettings({ provider: p.id })}
+            >
+              <strong>{p.label}</strong>
+              <small>{p.sub}</small>
+            </button>
+          ))}
+        </div>
+
+        {settings.provider === "gemini" ? (
+          <>
+            <label>
+              Gemini API キー
+              <div className="inline">
+                <input
+                  type={showKey ? "text" : "password"}
+                  value={settings.geminiApiKey}
+                  placeholder="AIza..."
+                  autoComplete="off"
+                  onChange={(e) => setSettings({ geminiApiKey: e.target.value.trim() })}
+                />
+                <button onClick={() => setShowKey((v) => !v)}>{showKey ? "隠す" : "表示"}</button>
+              </div>
+              <small className="muted">
+                Google アカウントがあれば無料で発行できます (クレジットカード不要)。
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+                  キーの発行はこちら
+                </a>
+              </small>
+            </label>
+            <p className="notice">
+              ⚠️ 無料枠では、送った写真や結果が Google のサービス改善に使われることがあります。
+              シフト表には同僚の名前も写るので、気になる場合は必要な部分だけを撮影するか、Claude (有料) を使ってください。
+              また、無料枠には 1 日あたりの利用回数の上限があります。
+            </p>
+            <details>
+              <summary className="muted">詳細設定</summary>
+              <label>
+                モデル名
+                <input
+                  value={settings.geminiModel}
+                  placeholder={DEFAULT_GEMINI_MODEL}
+                  onChange={(e) => setSettings({ geminiModel: e.target.value.trim() })}
+                />
+                <small className="muted">通常は変更不要です (空欄なら {DEFAULT_GEMINI_MODEL})</small>
+              </label>
+            </details>
+          </>
+        ) : (
+          <>
+            <label>
+              Anthropic API キー
+              <div className="inline">
+                <input
+                  type={showKey ? "text" : "password"}
+                  value={settings.apiKey}
+                  placeholder="sk-ant-..."
+                  autoComplete="off"
+                  onChange={(e) => setSettings({ apiKey: e.target.value.trim() })}
+                />
+                <button onClick={() => setShowKey((v) => !v)}>{showKey ? "隠す" : "表示"}</button>
+              </div>
+              <small className="muted">
+                読み取り 1 回ごとに利用料がかかります。
+                <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+                  キーの発行はこちら
+                </a>
+              </small>
+            </label>
+            <label>
+              モデル
+              <select value={settings.model} onChange={(e) => setSettings({ model: e.target.value })}>
+                {MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+        <p className="hint">API キーはこの端末の中だけに保存され、読み取りのときに各社の API へ直接送られます。</p>
       </section>
 
       <section className="card">
@@ -191,7 +255,10 @@ export function SettingsView({ store }: { store: Store }) {
                   const restored = migrate(JSON.parse(await file.text()));
                   if (!confirm(`シフト ${restored.shifts.length}件 を復元します。今のデータは上書きされます。よろしいですか?`)) return;
                   // API キーはバックアップに含めないので、今のものを引き継ぐ
-                  setData((d) => ({ ...restored, settings: { ...restored.settings, apiKey: d.settings.apiKey } }));
+                  setData((d) => ({
+                    ...restored,
+                    settings: { ...restored.settings, apiKey: d.settings.apiKey, geminiApiKey: d.settings.geminiApiKey },
+                  }));
                   setAliasText(restored.settings.aliases.join("、"));
                   setMessage("復元しました");
                 } catch {

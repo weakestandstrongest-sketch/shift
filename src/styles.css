@@ -166,6 +166,10 @@ label {
   display: flex;
   gap: 6px;
 }
+.inline button {
+  flex: none;
+  white-space: nowrap;
+}
 
 .card {
   background: var(--card);
@@ -538,6 +542,42 @@ label {
 }
 
 /* 設定 */
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.segmented button {
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+}
+.segmented button.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.segmented small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.notice {
+  font-size: 13px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 12px;
+}
+details {
+  margin-bottom: 8px;
+}
+summary {
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
 .wp-edit,
 .code-edit {
   display: flex;

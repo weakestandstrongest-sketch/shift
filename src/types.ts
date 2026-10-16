@@ -27,11 +27,19 @@ export interface Shift {
   source: "manual" | "photo";
 }
 
+/** 写真の読み取りに使う AI。gemini は無料枠あり、claude は有料 */
+export type Provider = "gemini" | "claude";
+
 export interface Settings {
   myName: string;
   /** シフト表での別表記 (苗字だけ、カタカナ、ニックネームなど) */
   aliases: string[];
+  provider: Provider;
+  geminiApiKey: string;
+  geminiModel: string;
+  /** Anthropic (Claude) の API キー */
   apiKey: string;
+  /** Claude のモデル */
   model: string;
   codes: ShiftCode[];
   defaultWorkplaceId: string | null;

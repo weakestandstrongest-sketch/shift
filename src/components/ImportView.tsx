@@ -27,7 +27,8 @@ export function ImportView({
   const cameraRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
 
-  const ready = Boolean(settings.myName.trim() && settings.apiKey);
+  const hasKey = Boolean(settings.provider === "claude" ? settings.apiKey : settings.geminiApiKey);
+  const ready = Boolean(settings.myName.trim() && hasKey);
 
   async function addFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -48,7 +49,7 @@ export function ImportView({
     setResult(null);
     setCandidates([]);
     try {
-      // Anthropic SDK は大きいので、読み取りを実行するときだけ読み込む
+      // AI の SDK は大きいので、読み取りを実行するときだけ読み込む
       const { extractShifts, toCandidates } = await import("../lib/extract");
       const r = await extractShifts(images, settings, targetMonth || null);
       setResult(r);
@@ -107,7 +108,9 @@ export function ImportView({
         <p>はじめに設定画面で次の 2 つを入力してください。</p>
         <ul>
           <li className={settings.myName.trim() ? "done" : ""}>自分の名前 (シフト表に書かれている名前)</li>
-          <li className={settings.apiKey ? "done" : ""}>Anthropic API キー (写真の読み取りに使います)</li>
+          <li className={hasKey ? "done" : ""}>
+            {settings.provider === "claude" ? "Anthropic API キー" : "Gemini API キー (無料で取得できます)"} — 写真の読み取りに使います
+          </li>
         </ul>
         <button className="primary" onClick={goSettings}>
           設定を開く
