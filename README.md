@@ -35,8 +35,9 @@ npm test         # ユニットテスト
 npm run build    # dist/ に本番ビルド
 ```
 
-`main` に push すると GitHub Actions で GitHub Pages に公開されます
-(リポジトリの Settings → Pages → Source を「GitHub Actions」にしてください)。
+既定ブランチ (または `main`) に push すると、GitHub Actions で GitHub Pages に公開されます
+(初回だけ、リポジトリの Settings → Pages → Source を「GitHub Actions」にしてください)。
+公開先: https://weakestandstrongest-sketch.github.io/shift/
 
 ## しくみ・注意
 

@@ -2,7 +2,8 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # このリポジトリの既定ブランチ (main を作った場合はそちらでも公開される)
+    branches: [main, claude/clever-ramanujan-jocea5]
   workflow_dispatch:
 
 permissions:
