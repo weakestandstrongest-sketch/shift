@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import type { Store } from "../App";
 import type { OffType, Shift } from "../types";
-import { addMonths, calendarGrid, parseISODate, timeToMinutes, todayISO, WEEKDAYS } from "../lib/date";
-import { formatHours, shiftsInMonth, sortShifts, summarize, workMinutes } from "../lib/shift";
+import { addMonths, calendarGrid, isValidISODate, parseISODate, todayISO, WEEKDAYS } from "../lib/date";
+import { formatHours, isFinished, shiftsInMonth, sortShifts, summarize, workMinutes } from "../lib/shift";
 import { Icon } from "./Icon";
 import type { YM } from "./MonthNav";
 
@@ -19,21 +19,11 @@ interface Props {
   goList: () => void;
 }
 
-/** そのシフトが今の時点で終わっているか (働いた分の計算用) */
-function isDone(s: Shift, today: string, nowMin: number): boolean {
-  if (s.date < today) return true;
-  if (s.date > today) return false;
-  const start = timeToMinutes(s.start);
-  const end = timeToMinutes(s.end);
-  return end > start && end <= nowMin;
-}
-
 export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, onDelete, onClearOff, goList }: Props) {
   const { data } = store;
   const rules = data.settings.breakRules;
   const today = todayISO();
   const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
 
   const byDate = new Map<string, Shift[]>();
   for (const s of sortShifts(data.shifts)) byDate.set(s.date, [...(byDate.get(s.date) ?? []), s]);
@@ -47,7 +37,7 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
   // 今月のバイト
   const monthShifts = shiftsInMonth(data.shifts, ym.year, ym.month);
   const total = summarize(monthShifts, data.workplaces, rules);
-  const doneShifts = monthShifts.filter((s) => isDone(s, today, nowMin));
+  const doneShifts = monthShifts.filter((s) => isFinished(s, now));
   const done = summarize(doneShifts, data.workplaces, rules);
   const priced = total.pay > 0;
   const progress = total.minutes > 0 ? done.minutes / total.minutes : 0;
@@ -62,14 +52,20 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
   // 左右スワイプで月を切り替える
   const touchX = useRef<number | null>(null);
   const move = (delta: number) => setYm(addMonths(ym.year, ym.month, delta));
+  /** その日を選んで、その月を表示する */
+  const jump = (iso: string) => {
+    const d = parseISODate(iso);
+    onSelect(iso);
+    setYm({ year: d.getFullYear(), month: d.getMonth() + 1 });
+  };
 
   return (
     <div className="home">
       <header className="home-head">
-        <div className="big-month">
+        <button className="big-month" aria-label="今日に戻る" onClick={() => jump(today)}>
           <span className="big-num">{ym.month}</span>
           <span className="big-year">{ym.year}年</span>
-        </div>
+        </button>
         <div className="head-actions">
           <button className="round-btn" aria-label="前の月" onClick={() => move(-1)}>
             <Icon name="left" />
@@ -77,16 +73,22 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
           <button className="round-btn" aria-label="次の月" onClick={() => move(1)}>
             <Icon name="right" />
           </button>
-          <button
-            className="round-btn"
-            aria-label="今日"
-            onClick={() => {
-              onSelect(today);
-              setYm({ year: now.getFullYear(), month: now.getMonth() + 1 });
-            }}
-          >
-            <Icon name="today" />
-          </button>
+          {/* 透明な日付入力を重ねて、タップで端末の日付ピッカーを開く */}
+          <label className="round-btn picker-btn" aria-label="日付を選んで移動">
+            <Icon name="calgrid" size={26} />
+            <input
+              type="date"
+              value={selected}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker();
+                } catch {
+                  // showPicker が使えない端末では、入力欄そのもののタップでピッカーが開く
+                }
+              }}
+              onChange={(e) => isValidISODate(e.target.value) && jump(e.target.value)}
+            />
+          </label>
         </div>
       </header>
 

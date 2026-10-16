@@ -34,6 +34,36 @@ export function workMinutes(shift: Times, rules: BreakRule[] = []): number {
   return Math.max(0, spanMinutes(shift) - breakOf(shift, rules));
 }
 
+/** 深夜 (22時〜翌5時) にかかる時間 (分)。休憩の位置は分からないので拘束時間で数える */
+export function nightMinutes(shift: Pick<Shift, "start" | "end">): number {
+  const s = timeToMinutes(shift.start);
+  const e = s + spanMinutes(shift);
+  const windows = [
+    [0, 5 * 60],
+    [22 * 60, 29 * 60],
+    [46 * 60, 53 * 60],
+  ];
+  return windows.reduce((sum, [a, b]) => sum + Math.max(0, Math.min(e, b) - Math.max(s, a)), 0);
+}
+
+/** そのシフトが now の時点で終わっているか */
+export function isFinished(shift: Pick<Shift, "date" | "start" | "end">, now: Date): boolean {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  if (shift.date < today) {
+    // 前日からの夜勤がまだ続いている場合
+    const overnight = timeToMinutes(shift.end) <= timeToMinutes(shift.start);
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const y = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
+    if (overnight && shift.date === y) return timeToMinutes(shift.end) <= now.getHours() * 60 + now.getMinutes();
+    return true;
+  }
+  if (shift.date > today) return false;
+  const start = timeToMinutes(shift.start);
+  const end = timeToMinutes(shift.end);
+  return end > start && end <= now.getHours() * 60 + now.getMinutes();
+}
+
 export function formatHours(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

@@ -65,6 +65,8 @@ export interface Settings {
   /** AI に伝える、このシフト表の読み方 (記号や色の意味など) */
   readingNotes: string;
   defaultWorkplaceId: string | null;
+  /** 月間の目標金額 (円)。未設定なら null */
+  monthlyGoal: number | null;
 }
 
 export interface AppData {

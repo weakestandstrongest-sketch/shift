@@ -8,8 +8,10 @@ const PATHS = {
   left: "M15 5l-7 7 7 7",
   right: "M9 5l7 7-7 7",
   close: "M6 6l12 12M18 6L6 18",
-  today: "M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1ZM12 15.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z",
   chevron: "M9 6l6 6-6 6",
+  // リング付きのカレンダーに点の格子 (日付を選ぶ)
+  calgrid: "M8 2.5v4M16 2.5v4M5.5 4.5h13A2.5 2.5 0 0 1 21 7v11.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5V7a2.5 2.5 0 0 1 2.5-2.5ZM8 11.5h.01M12 11.5h.01M16 11.5h.01M8 16h.01M12 16h.01M16 16h.01",
+  pencil: "M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4",
 } as const;
 
 export type IconName = keyof typeof PATHS;
@@ -28,6 +30,10 @@ export function Icon({ name, size = 24, strokeWidth = 1.8 }: { name: IconName; s
       aria-hidden
     >
       <path d={PATHS[name]} />
+      {name === "calgrid" && (
+        // 点を少し大きく見せる
+        <path d="M8 11.5h.01M12 11.5h.01M16 11.5h.01M8 16h.01M12 16h.01M16 16h.01" strokeWidth={strokeWidth * 1.9} />
+      )}
     </svg>
   );
 }

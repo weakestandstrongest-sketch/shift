@@ -1,29 +1,27 @@
 import { addMonths } from "../lib/date";
+import { Icon } from "./Icon";
 
 export interface YM {
   year: number;
   month: number;
 }
 
-export function MonthNav({ ym, setYm }: { ym: YM; setYm: (ym: YM) => void }) {
-  const now = new Date();
-  const isCurrent = ym.year === now.getFullYear() && ym.month === now.getMonth() + 1;
+/** 中央に「2026年10月」、左右に丸い矢印ボタンの月切り替え */
+export function MonthNav({ ym, setYm, caption }: { ym: YM; setYm: (ym: YM) => void; caption?: string }) {
   return (
     <div className="month-nav">
-      <button className="icon-btn" aria-label="前の月" onClick={() => setYm(addMonths(ym.year, ym.month, -1))}>
-        ‹
+      <button className="round-btn filled" aria-label="前の月" onClick={() => setYm(addMonths(ym.year, ym.month, -1))}>
+        <Icon name="left" size={22} />
       </button>
-      <h2>
-        {ym.year}年{ym.month}月
-      </h2>
-      <button className="icon-btn" aria-label="次の月" onClick={() => setYm(addMonths(ym.year, ym.month, 1))}>
-        ›
+      <div className="month-nav-title">
+        {caption && <span className="month-nav-caption">{caption}</span>}
+        <h2>
+          {ym.year}年{ym.month}月
+        </h2>
+      </div>
+      <button className="round-btn filled" aria-label="次の月" onClick={() => setYm(addMonths(ym.year, ym.month, 1))}>
+        <Icon name="right" size={22} />
       </button>
-      {!isCurrent && (
-        <button className="link-btn" onClick={() => setYm({ year: now.getFullYear(), month: now.getMonth() + 1 })}>
-          今月
-        </button>
-      )}
     </div>
   );
 }

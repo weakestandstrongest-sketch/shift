@@ -35,6 +35,7 @@ export function defaultData(): AppData {
       breakRules: DEFAULT_BREAK_RULES,
       readingNotes: "",
       defaultWorkplaceId: null,
+      monthlyGoal: null,
     },
     workplaces: [],
     shifts: [],

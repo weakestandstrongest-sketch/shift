@@ -89,3 +89,28 @@ describe("buildICS", () => {
     expect(ics).toContain("DESCRIPTION:棚卸し\\, 夜");
   });
 });
+
+describe("nightMinutes / isFinished", async () => {
+  const { nightMinutes, isFinished } = await import("./shift");
+  it.each([
+    ["17:00", "22:00", 0],
+    ["22:00", "01:00", 180],
+    ["21:15", "23:15", 75],
+    ["04:00", "09:00", 60],
+    ["20:00", "06:00", 420],
+  ])("%s〜%s → %i min at night", (start, end, expected) => {
+    expect(nightMinutes({ start, end })).toBe(expected);
+  });
+
+  const now = new Date(2026, 9, 16, 18, 0); // 10/16 18:00
+  it.each([
+    ["2026-10-15", "09:30", "16:00", true],
+    ["2026-10-16", "09:30", "16:00", true],
+    ["2026-10-16", "17:15", "21:15", false],
+    ["2026-10-17", "09:30", "16:00", false],
+    ["2026-10-15", "22:00", "19:00", false], // 前日 22:00〜今日 19:00 はまだ終わっていない
+    ["2026-10-15", "22:00", "01:00", true],
+  ])("%s %s〜%s finished: %s", (date, start, end, expected) => {
+    expect(isFinished({ date, start, end }, now)).toBe(expected);
+  });
+});

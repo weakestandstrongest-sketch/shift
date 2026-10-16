@@ -50,6 +50,19 @@ export default function App() {
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
 
+  // 下のバー: 指の位置にハイライトがついてくる (null なら選択中のタブの位置)
+  const navRef = useRef<HTMLElement>(null);
+  const [drag, setDrag] = useState<{ left: number; index: number } | null>(null);
+  const tabIndex = TABS.findIndex((t) => t.id === tab);
+  /** バーの中の指の位置から、ハイライトの左端 (px) とタブ番号を出す */
+  const pointerToTab = (clientX: number) => {
+    const rect = navRef.current!.getBoundingClientRect();
+    const pad = 5;
+    const w = (rect.width - pad * 2) / TABS.length;
+    const left = Math.min(Math.max(clientX - rect.left - pad - w / 2, 0), w * (TABS.length - 1));
+    return { left, index: Math.round(left / w) };
+  };
+
   useEffect(() => saveData(data), [data]);
 
   const showToast = (t: Toast) => {
@@ -143,13 +156,44 @@ export default function App() {
         </div>
       )}
 
-      <nav className="tabbar" aria-label="メニュー">
-        {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "active" : ""} aria-current={tab === t.id ? "page" : undefined} onClick={() => setTab(t.id)}>
-            <Icon name={t.icon} size={24} />
-            <span>{t.label}</span>
-          </button>
-        ))}
+      <nav
+        ref={navRef}
+        className={`tabbar${drag ? " pressing" : ""}`}
+        aria-label="メニュー"
+        onPointerDown={(e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          setDrag(pointerToTab(e.clientX));
+        }}
+        onPointerMove={(e) => drag && setDrag(pointerToTab(e.clientX))}
+        onPointerUp={(e) => {
+          if (!drag) return;
+          setTab(TABS[pointerToTab(e.clientX).index].id);
+          setDrag(null);
+        }}
+        onPointerCancel={() => setDrag(null)}
+      >
+        <span
+          className="tab-indicator"
+          aria-hidden
+          style={{ transform: drag ? `translateX(${drag.left}px) scale(1.08)` : `translateX(${tabIndex * 100}%)` }}
+        />
+        {TABS.map((t, i) => {
+          // ドラッグ中は指の下にあるタブを光らせる
+          const lit = drag ? i === drag.index : tab === t.id;
+          return (
+            <button
+              key={t.id}
+              className={lit ? "active" : ""}
+              aria-current={tab === t.id ? "page" : undefined}
+              // キーボード操作用 (タッチ・マウスは nav の pointer イベントで切り替える)
+              onClick={(e) => e.detail === 0 && setTab(t.id)}
+            >
+              <Icon name={t.icon} size={24} />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
       </nav>
       <button
         className="fab"
