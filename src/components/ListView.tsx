@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { Store } from "../App";
 import type { Shift } from "../types";
 import { OFF_TYPES } from "../types";
@@ -7,11 +6,9 @@ import { buildICS } from "../lib/ics";
 import { formatHours, shiftPay, shiftsInMonth, summarize, workMinutes } from "../lib/shift";
 import { downloadFile } from "../lib/storage";
 import { MonthNav, type YM } from "./MonthNav";
-import { ShiftEditor } from "./ShiftEditor";
 
-export function ListView({ store, ym, setYm }: { store: Store; ym: YM; setYm: (ym: YM) => void }) {
+export function ListView({ store, ym, setYm, onEdit }: { store: Store; ym: YM; setYm: (ym: YM) => void; onEdit: (s: Shift) => void }) {
   const { data } = store;
-  const [editing, setEditing] = useState<Shift | null>(null);
   const shifts = shiftsInMonth(data.shifts, ym.year, ym.month);
   const rules = data.settings.breakRules;
   const total = summarize(shifts, data.workplaces, rules);
@@ -27,6 +24,7 @@ export function ListView({ store, ym, setYm }: { store: Store; ym: YM; setYm: (y
 
   return (
     <div>
+      <h1 className="page-title">一覧</h1>
       <MonthNav ym={ym} setYm={setYm} />
 
       <div className="card">
@@ -66,7 +64,7 @@ export function ListView({ store, ym, setYm }: { store: Store; ym: YM; setYm: (y
             const wp = data.workplaces.find((w) => w.id === s.workplaceId);
             const pay = shiftPay(s, data.workplaces, rules);
             return (
-              <button key={s.id} className="shift-row" onClick={() => setEditing(s)}>
+              <button key={s.id} className="shift-row" onClick={() => onEdit(s)}>
                 <span className="bar" style={{ background: wp?.color ?? "var(--accent)" }} />
                 <span className="date">{formatDateJa(s.date)}</span>
                 <span className="time">
@@ -91,7 +89,6 @@ export function ListView({ store, ym, setYm }: { store: Store; ym: YM; setYm: (y
       </button>
       <p className="hint">Google カレンダーや iPhone のカレンダーに読み込めます。</p>
 
-      {editing && <ShiftEditor store={store} shift={editing} date={editing.date} onClose={() => setEditing(null)} />}
     </div>
   );
 }

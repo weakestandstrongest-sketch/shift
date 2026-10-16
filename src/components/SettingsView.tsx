@@ -26,6 +26,7 @@ export function SettingsView({ store }: { store: Store }) {
 
   return (
     <div>
+      <h1 className="page-title">設定</h1>
       <section className="card">
         <h3>あなたの名前</h3>
         <label>

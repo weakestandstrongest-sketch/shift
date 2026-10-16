@@ -1,19 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AppData, DayOff, OffType, Shift } from "./types";
 import { loadData, saveData } from "./lib/storage";
 import { newId } from "./lib/shift";
-import { CalendarView } from "./components/CalendarView";
+import { parseISODate, todayISO } from "./lib/date";
+import { HomeView } from "./components/HomeView";
 import { ImportView } from "./components/ImportView";
 import { ListView } from "./components/ListView";
 import { SettingsView } from "./components/SettingsView";
+import { ShiftSheet } from "./components/ShiftSheet";
+import { Icon, type IconName } from "./components/Icon";
 
 type Tab = "calendar" | "import" | "list" | "settings";
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "calendar", label: "カレンダー", icon: "📅" },
-  { id: "import", label: "写真で取込", icon: "📷" },
-  { id: "list", label: "一覧・給料", icon: "💴" },
-  { id: "settings", label: "設定", icon: "⚙️" },
+const TABS: { id: Tab; label: string; icon: IconName }[] = [
+  { id: "calendar", label: "カレンダー", icon: "calendar" },
+  { id: "import", label: "写真で取込", icon: "camera" },
+  { id: "list", label: "一覧", icon: "list" },
+  { id: "settings", label: "設定", icon: "gear" },
 ];
 
 export interface Store {
@@ -28,13 +31,32 @@ export interface Store {
   setDayOff: (date: string, type: OffType | null) => void;
 }
 
+/** 追加・編集シートの状態 */
+export type SheetState = { shift: Shift | null; date: string } | null;
+
+/** 画面下に一時的に出すお知らせ (元に戻すボタン付き) */
+export interface Toast {
+  message: string;
+  undo?: () => void;
+}
+
 export default function App() {
   const [data, setDataState] = useState<AppData>(loadData);
   const [tab, setTab] = useState<Tab>(() => (loadData().settings.myName ? "calendar" : "settings"));
   const today = new Date();
   const [ym, setYm] = useState({ year: today.getFullYear(), month: today.getMonth() + 1 });
+  const [selected, setSelected] = useState(todayISO());
+  const [sheet, setSheet] = useState<SheetState>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => saveData(data), [data]);
+
+  const showToast = (t: Toast) => {
+    window.clearTimeout(toastTimer.current);
+    setToast(t);
+    toastTimer.current = window.setTimeout(() => setToast(null), 4000);
+  };
 
   const store: Store = {
     data,
@@ -58,14 +80,39 @@ export default function App() {
       })),
   };
 
+  /** 削除して「元に戻す」を出す */
+  const deleteWithUndo = (s: Shift) => {
+    store.deleteShift(s.id);
+    showToast({ message: `${s.start}〜${s.end} のシフトを削除しました`, undo: () => store.upsertShift(s) });
+  };
+  const clearOffWithUndo = (date: string, type: OffType) => {
+    store.setDayOff(date, null);
+    showToast({ message: `${type}を取り消しました`, undo: () => store.setDayOff(date, type) });
+  };
+
+  const selectDate = (iso: string) => {
+    setSelected(iso);
+    const d = parseISODate(iso);
+    setYm({ year: d.getFullYear(), month: d.getMonth() + 1 });
+  };
+
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>シフト帳</h1>
-        {data.settings.myName && <span className="me">{data.settings.myName} さん</span>}
-      </header>
       <main className="app-main">
-        {tab === "calendar" && <CalendarView store={store} ym={ym} setYm={setYm} />}
+        {tab === "calendar" && (
+          <HomeView
+            store={store}
+            ym={ym}
+            setYm={setYm}
+            selected={selected}
+            onSelect={setSelected}
+            onEdit={(s) => setSheet({ shift: s, date: s.date })}
+            onAdd={(date) => setSheet({ shift: null, date })}
+            onDelete={deleteWithUndo}
+            onClearOff={clearOffWithUndo}
+            goList={() => setTab("list")}
+          />
+        )}
         {tab === "import" && (
           <ImportView
             store={store}
@@ -76,19 +123,61 @@ export default function App() {
             }}
           />
         )}
-        {tab === "list" && <ListView store={store} ym={ym} setYm={setYm} />}
+        {tab === "list" && <ListView store={store} ym={ym} setYm={setYm} onEdit={(s) => setSheet({ shift: s, date: s.date })} />}
         {tab === "settings" && <SettingsView store={store} />}
       </main>
-      <nav className="tabbar">
+
+      {toast && (
+        <div className="toast" role="status">
+          <span>{toast.message}</span>
+          {toast.undo && (
+            <button
+              onClick={() => {
+                toast.undo?.();
+                setToast(null);
+              }}
+            >
+              元に戻す
+            </button>
+          )}
+        </div>
+      )}
+
+      <nav className="tabbar" aria-label="メニュー">
         {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>
-            <span className="tab-icon" aria-hidden>
-              {t.icon}
-            </span>
+          <button key={t.id} className={tab === t.id ? "active" : ""} aria-current={tab === t.id ? "page" : undefined} onClick={() => setTab(t.id)}>
+            <Icon name={t.icon} size={24} />
             <span>{t.label}</span>
           </button>
         ))}
       </nav>
+      <button
+        className="fab"
+        aria-label="シフトを追加"
+        onClick={() => {
+          if (tab !== "calendar") setTab("calendar");
+          setSheet({ shift: null, date: selected });
+        }}
+      >
+        <Icon name="plus" size={30} strokeWidth={2.2} />
+      </button>
+
+      {sheet && (
+        <ShiftSheet
+          store={store}
+          shift={sheet.shift}
+          date={sheet.date}
+          onClose={() => setSheet(null)}
+          onSaved={(date, message) => {
+            selectDate(date);
+            showToast({ message });
+          }}
+          onDelete={(s) => {
+            deleteWithUndo(s);
+            setSheet(null);
+          }}
+        />
+      )}
     </div>
   );
 }
