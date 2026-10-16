@@ -6,6 +6,7 @@ import { formatDateJa, parseISODate } from "../lib/date";
 import type { Candidate, Extraction, OffCandidate } from "../lib/extract";
 import { mergeImport } from "../lib/extract";
 import { prepareImage, type PreparedImage } from "../lib/image";
+import { UsageMeter } from "./UsageMeter";
 import { isDuplicate, newId } from "../lib/shift";
 
 export function ImportView({
@@ -247,6 +248,8 @@ export function ImportView({
           </>
         )}
         {error && <p className="error">{error}</p>}
+        {/* loading が変わるたびに描き直して、読み取り後の残り回数を出す */}
+        <UsageMeter key={String(loading)} />
       </div>
 
       {result && (

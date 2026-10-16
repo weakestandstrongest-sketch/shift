@@ -1,6 +1,6 @@
 {
-  "name": "シフト帳",
-  "short_name": "シフト帳",
+  "name": "ぷにシフト",
+  "short_name": "ぷにシフト",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",

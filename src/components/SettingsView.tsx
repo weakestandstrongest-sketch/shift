@@ -5,6 +5,7 @@ import { OFF_TYPES } from "../types";
 import { newId } from "../lib/shift";
 import { DEFAULT_BREAK_RULES, DEFAULT_COLOR_BREAKS, DEFAULT_GEMINI_MODEL, DEFAULT_OFF_SYMBOLS, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
 import { todayISO } from "../lib/date";
+import { UsageMeter } from "./UsageMeter";
 
 export function SettingsView({ store }: { store: Store }) {
   const { data, setData } = store;
@@ -91,6 +92,8 @@ export function SettingsView({ store }: { store: Store }) {
             <small className="muted">通常は変更不要です (空欄なら {DEFAULT_GEMINI_MODEL})</small>
           </label>
         </details>
+        <h4 className="sub-label">無料枠の残り</h4>
+        <UsageMeter editable />
         <p className="hint">API キーはこの端末の中だけに保存され、読み取りのときに Gemini API へ直接送られます。</p>
       </section>
 

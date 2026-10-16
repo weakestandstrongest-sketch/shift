@@ -2,6 +2,7 @@ import { ApiError, createPartFromBase64, createUserContent, FinishReason, Google
 import { DAY_KINDS, ExtractionError, type Extraction, type GeminiRequest } from "./extract";
 import { DEFAULT_GEMINI_MODEL } from "./storage";
 import { parseGeminiJSON } from "./geminiParse";
+import { nextReset, recordQuotaError, recordRequest } from "./usage";
 
 // Gemini が対応する JSON Schema の範囲に収まるよう、null や anyOf を使わない形にする
 // (分からない値は空文字 "" で返してもらい、parseGeminiJSON で null に戻す)
@@ -72,7 +73,17 @@ export async function extractWithGemini(req: GeminiRequest): Promise<Extraction>
 }
 
 async function callGemini({ images, system, userText, apiKey }: GeminiRequest, model: string): Promise<Extraction> {
-  const ai = new GoogleGenAI({ apiKey, httpOptions: { retryOptions: RETRY } });
+  const ai = new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      retryOptions: RETRY,
+      // 無料枠の残り回数を出すため、自動の再試行も含めて送ったリクエストを数える
+      fetch: (input, init) => {
+        recordRequest();
+        return fetch(input, init);
+      },
+    },
+  });
   const res = await ai.models.generateContent({
     model,
     contents: [createUserContent([...images.map((img) => createPartFromBase64(img.data, img.mediaType)), userText + GEMINI_NOTE])],
@@ -100,7 +111,14 @@ function toExtractionError(e: unknown, model: string): unknown {
   if (e instanceof ApiError) {
     const d = detail(e);
     if (e.status === 429) {
-      return new ExtractionError(`無料枠の利用回数の上限に達しました。1 分ほど待つか、日をまたいでから試してください。${d}`);
+      recordQuotaError(e.message);
+      if (/per\s*minute|PerMinute/i.test(e.message)) {
+        return new ExtractionError(`短い時間に読み取りすぎました。1 分ほど待ってからもう一度試してください。${d}`);
+      }
+      const reset = nextReset(Date.now());
+      return new ExtractionError(
+        `今日の無料枠を使い切りました。${reset.getHours()}:${String(reset.getMinutes()).padStart(2, "0")} を過ぎるとまた読み取れます。${d}`,
+      );
     }
     if (e.status === 400 && /API key|API_KEY/i.test(e.message)) {
       return new ExtractionError("Gemini API キーが正しくありません。設定を確認してください。");
