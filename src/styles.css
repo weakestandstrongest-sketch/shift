@@ -315,12 +315,12 @@ summary {
   gap: 8px;
   cursor: pointer;
 }
+/* 下の「2026年10月16日(金)」と同じ太字。大きさはそのまま */
 .big-num {
   font-size: clamp(64px, 20vw, 80px);
-  font-weight: 300;
+  font-weight: 700;
   line-height: 0.85;
-  letter-spacing: -3px;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
 }
 .big-year {
   font-size: 19px;
@@ -357,12 +357,24 @@ summary {
 
 /* カレンダー (iOS のカレンダーのように 3 段階で開く) */
 .mgrid {
-  touch-action: pan-y;
+  /* --s: 表示段階 (0 = 週, 1 = 月, 2 = 詳しい月)。JS が毎フレーム書き換える */
+  --s: 1;
+  --row: 58px; /* ふつうの月の行の高さ */
+  --row-grow: 50px; /* 詳しい月で増える分 */
+  /* 0 → 1: 選んだ週以外の行が開く */
+  --others: clamp(0, var(--s), 1);
+  /* 0 → 1: 予定の名前が見えてくる */
+  --detail: clamp(0, var(--s) - 1, 1);
+  /* 行の伸び。2 を越えて引っぱったときやばねの行き過ぎでも少し伸びる */
+  --grow: max(0, var(--s) - 1);
 }
 .cal-head,
 .cal-row {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.cal-rows {
+  touch-action: pan-y;
 }
 .cal-wd {
   text-align: center;
@@ -373,8 +385,12 @@ summary {
 }
 .cal-row {
   overflow: hidden;
-  /* 行の高さは毎フレーム JS で決める (CSS の transition は使わない) */
-  will-change: height;
+  height: calc(var(--row) * var(--others) + var(--row-grow) * var(--grow));
+  opacity: var(--others);
+}
+.cal-row.sel-row {
+  height: calc(var(--row) + var(--row-grow) * var(--grow));
+  opacity: 1;
 }
 .cal-day {
   all: unset;
@@ -436,9 +452,13 @@ summary {
   gap: 1px;
   pointer-events: none;
 }
+.cell-compact {
+  opacity: calc(1 - var(--detail));
+}
 .cell-detail {
   align-items: stretch;
   gap: 2px;
+  opacity: var(--detail);
 }
 .cal-shift {
   font-size: 11px;

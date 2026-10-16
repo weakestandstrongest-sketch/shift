@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 /**
  * カレンダーの表示段階。0 = 1週間だけ、1 = ふつうの月、2 = 予定の名前まで見える月。
- * 途中の値 (0.4 など) もとり、ドラッグ中は指に合わせて連続的に変わる。
+ * 途中の値 (0.4 など) もとり、ドラッグ・ピンチ中は指に合わせて連続的に変わる。
+ *
+ * なめらかに動かすため、毎フレームの値は React で描き直さず、要素の CSS 変数 --s に直接書く。
+ * 行の高さや文字の濃さは CSS がその値から計算する。React には段階 (0/1/2) が変わったときだけ知らせる。
  */
 const KEY = "shift-app:calStage";
 
@@ -15,18 +18,31 @@ function loadStage(): number {
   }
 }
 
-/** ばねの固さ (1/ms)。iOS のアニメーションに近い、0.4 秒ほどで落ち着く値 */
-const OMEGA = (2 * Math.PI) / 420;
+/** ばねの固さ (1/ms)。iOS のアニメーションに近い、0.45 秒ほどで落ち着く値 */
+const OMEGA = (2 * Math.PI) / 450;
 
-export function useCalendarStage() {
-  const [stage, setStageState] = useState(loadStage);
-  const current = useRef(stage);
+const levelOf = (v: number) => (v < 0.5 ? 0 : v < 1.5 ? 1 : 2);
+
+export function useCalendarStage(el: RefObject<HTMLElement | null>) {
+  const current = useRef<number>(NaN);
+  if (Number.isNaN(current.current)) current.current = loadStage();
+  /** いまいちばん近い段階 (0/1/2) */
+  const [level, setLevel] = useState(() => levelOf(current.current));
   const frame = useRef<number | undefined>(undefined);
 
-  const set = useCallback((v: number) => {
-    current.current = v;
-    setStageState(v);
-  }, []);
+  const set = useCallback(
+    (v: number) => {
+      current.current = v;
+      el.current?.style.setProperty("--s", v.toFixed(4));
+      setLevel(levelOf(v)); // 同じ値なら React は描き直さない
+    },
+    [el],
+  );
+
+  // 最初の表示の前に値を入れておく
+  useLayoutEffect(() => {
+    el.current?.style.setProperty("--s", String(current.current));
+  }, [el]);
 
   const stop = () => {
     if (frame.current !== undefined) cancelAnimationFrame(frame.current);
@@ -54,13 +70,14 @@ export function useCalendarStage() {
       // 臨界減衰のばね: x(t) = target + (A + B t) e^(-ωt)
       const A = current.current - target;
       const B = velocity + OMEGA * A;
-      const t0 = performance.now();
+      let t0: number | undefined;
       const step = (now: number) => {
+        t0 ??= now - 8; // 最初のフレームから少し進めて、止まって見える 1 コマをなくす
         const t = now - t0;
         const e = Math.exp(-OMEGA * t);
         const x = (A + B * t) * e;
         const v = (B - OMEGA * (A + B * t)) * e;
-        if (Math.abs(x) < 0.002 && Math.abs(v) < 0.0002) {
+        if (Math.abs(x) < 0.001 && Math.abs(v) < 0.0001) {
           frame.current = undefined;
           set(target);
           return save();
@@ -84,5 +101,5 @@ export function useCalendarStage() {
     [set],
   );
 
-  return { stage, current, animateTo, follow };
+  return { level, current, animateTo, follow };
 }
