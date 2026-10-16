@@ -12,6 +12,12 @@ export interface BreakRule {
   breakMinutes: number;
 }
 
+/** シフト表のマスの色で決まる休憩 (例: 水色 = 45分) */
+export interface ColorBreak {
+  color: string;
+  breakMinutes: number;
+}
+
 /** 休みの種類 */
 export type OffType = "公休" | "希望休" | "有給";
 export const OFF_TYPES: OffType[] = ["公休", "希望休", "有給"];
@@ -62,6 +68,8 @@ export interface Settings {
   codes: ShiftCode[];
   offSymbols: OffSymbol[];
   breakRules: BreakRule[];
+  /** マスの色と休憩の対応。色が分かるときは休憩ルールより優先する */
+  colorBreaks: ColorBreak[];
   /** AI に伝える、このシフト表の読み方 (記号や色の意味など) */
   readingNotes: string;
   defaultWorkplaceId: string | null;

@@ -1,4 +1,4 @@
-import type { DayOff, OffSymbol, OffType, Settings, Shift, ShiftCode } from "../types";
+import type { ColorBreak, DayOff, OffSymbol, OffType, Settings, Shift, ShiftCode } from "../types";
 import { OFF_TYPES } from "../types";
 import { isValidISODate, normalizeTime, parseTimeRange, todayISO } from "./date";
 import type { PreparedImage } from "./image";
@@ -19,6 +19,8 @@ export interface Extraction {
     /** マスの文字そのまま。何も書かれていなければ空文字 */
     raw: string;
     kind: DayKind;
+    /** マスの背景色 (緑 / 水色 / 白 / 黄 など)。分からなければ空文字 */
+    color?: string;
     start: string | null;
     end: string | null;
     note: string;
@@ -39,6 +41,7 @@ export const SYSTEM_PROMPT = `あなたは、アルバイトやパートのシ�
 - date は YYYY-MM-DD。表に年が書かれていなければ、基準日に最も近くなる年を選んでください (例: 基準日が 2026年12月で表が1月なら 2027年)。
 - raw にはそのマスに書かれている文字をそのまま入れます (例: "9-17", "早", "A", "17:00〜L", "1915F2115", "*", "有")。何も書かれていないマス (色が塗られているだけのマスを含む) は空文字にします。
 - 「1915F2115」「930F16」「16F20」のように、開始と終了の時刻が F などの文字でつながれていることがあります。「1915F2115」は 19:15〜21:15、「930F16」は 9:30〜16:00 です。数字を1桁も読み落とさないよう注意してください。
+- color にはそのマスの背景色を、白 / 緑 / 水色 / 黄 / 赤 / オレンジ / グレー / その他 から一番近いものを書きます。色が塗られていなければ 白 です。色で休憩時間が決まっている表があるので、勤務の日は特によく見てください。
 - start / end は勤務の日だけ書きます。24 時間表記の HH:MM。日付をまたぐ場合は "25:00" のように 24 以上で書いて構いません。
 - 「早」「遅」「A」のような記号だけのマスは、写真内の凡例か、ユーザーが登録した記号の対応表から時間を決めてください。どちらからも分からなければ start / end を null にします。
 - 「L」「ラスト」「締め」「〜CL」など終了時刻が書かれていない場合は end を null にし、note に理由を書きます。
@@ -111,6 +114,10 @@ export interface Candidate {
   needsTime: boolean;
   duplicate: boolean;
   selected: boolean;
+  /** マスの色 (分かれば) */
+  color: string;
+  /** マスの色から決まった休憩 (分)。null なら休憩ルールで自動 */
+  breakMinutes: number | null;
 }
 
 /** 取り込み画面で確認するための休みの候補 */
@@ -126,6 +133,28 @@ export interface OffCandidate {
 
 const norm = (s: string) => s.normalize("NFKC").trim();
 
+// 色の呼び方のゆれをそろえる (青 → 水色、黄色 → 黄 など)
+const COLOR_NAMES: [RegExp, string][] = [
+  [/緑|グリーン|green/i, "緑"],
+  [/水色|青|ブルー|blue|cyan|シアン/i, "水色"],
+  [/黄|イエロー|yellow/i, "黄"],
+  [/白|ホワイト|white|なし|無色/i, "白"],
+  [/赤|ピンク|red|pink/i, "赤"],
+  [/オレンジ|橙|orange/i, "オレンジ"],
+  [/灰|グレー|gray|grey/i, "グレー"],
+];
+export function canonicalColor(color: string): string {
+  const c = norm(color);
+  return COLOR_NAMES.find(([re]) => re.test(c))?.[1] ?? c;
+}
+
+/** マスの色に対応する休憩 (分)。対応がなければ null */
+export function colorBreak(color: string | undefined, list: ColorBreak[]): number | null {
+  if (!color?.trim()) return null;
+  const c = canonicalColor(color);
+  return list.find((x) => x.color.trim() && canonicalColor(x.color) === c)?.breakMinutes ?? null;
+}
+
 /** マスの文字が登録済みの休みの記号に当たるか。「空欄」は何も書かれていないマス */
 export function matchOffSymbol(raw: string, symbols: OffSymbol[]): OffSymbol | null {
   const r = norm(raw);
@@ -138,7 +167,7 @@ export function matchOffSymbol(raw: string, symbols: OffSymbol[]): OffSymbol | n
  */
 export function toCandidates(
   result: Extraction,
-  settings: Pick<Settings, "codes" | "offSymbols">,
+  settings: Pick<Settings, "codes" | "offSymbols"> & Partial<Pick<Settings, "colorBreaks">>,
   existingShifts: Shift[],
   existingDaysOff: DayOff[],
 ): { work: Candidate[]; off: OffCandidate[] } {
@@ -190,6 +219,8 @@ export function toCandidates(
       needsTime,
       duplicate,
       selected: !needsTime && !duplicate,
+      color: d.color ? canonicalColor(d.color) : "",
+      breakMinutes: colorBreak(d.color, settings.colorBreaks ?? []),
     });
   }
   work.sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));

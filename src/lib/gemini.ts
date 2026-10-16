@@ -11,12 +11,13 @@ const daySchema = {
     date: { type: "string", description: "YYYY-MM-DD" },
     raw: { type: "string", description: "マスの文字そのまま。何も書かれていなければ空文字" },
     kind: { type: "string", enum: DAY_KINDS },
+    color: { type: "string", enum: ["白", "緑", "水色", "黄", "赤", "オレンジ", "グレー", "その他"], description: "マスの背景色" },
     start: { type: "string", description: "HH:MM。不明なら空文字" },
     end: { type: "string", description: "HH:MM。不明なら空文字" },
     note: { type: "string" },
     uncertain: { type: "boolean" },
   },
-  required: ["date", "raw", "kind", "start", "end", "note", "uncertain"],
+  required: ["date", "raw", "kind", "color", "start", "end", "note", "uncertain"],
 };
 
 const responseSchema = {

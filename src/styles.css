@@ -736,15 +736,22 @@ summary {
   width: calc((100% - 10px) / 4);
   border-radius: 999px;
   background: var(--pill);
-  transition: transform 0.5s cubic-bezier(0.3, 1.35, 0.5, 1), background 0.2s;
+  /* iOS のような、勢いよく動き出してやわらかく止まる動き */
+  transition:
+    transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+    background 0.25s ease;
+  will-change: transform;
   pointer-events: none;
 }
-.tabbar.pressing .tab-indicator {
-  transition: transform 0.08s linear, background 0.2s;
+.tabbar.dragging .tab-indicator {
+  transition:
+    transform 0.18s cubic-bezier(0.25, 0.8, 0.25, 1),
+    background 0.25s ease;
   background: var(--pill-strong);
 }
 .tabbar button {
   position: relative;
+  -webkit-tap-highlight-color: transparent;
   flex: 1;
   min-width: 0;
   border-radius: 999px;
@@ -762,7 +769,7 @@ summary {
   font-weight: 600;
 }
 .tabbar button svg {
-  transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+  transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .tabbar button.active svg {
   transform: scale(1.08);
@@ -871,6 +878,28 @@ summary {
 .donut circle {
   fill: none;
   stroke-linecap: round;
+}
+.donut-rest,
+.donut-done {
+  animation: donut-draw 0.9s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.donut-done {
+  animation-delay: 0.12s;
+}
+/* 12 時から時計回りに伸びる */
+@keyframes donut-draw {
+  from {
+    stroke-dashoffset: var(--len);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .donut-rest,
+  .donut-done {
+    animation: none;
+  }
 }
 .donut-track {
   stroke: var(--card-2);
@@ -1282,6 +1311,11 @@ summary {
   white-space: nowrap;
 }
 .rule-edit input[type="time"] {
+  flex: 1;
+  min-width: 0;
+  max-width: 130px;
+}
+.rule-edit .color-name {
   flex: 1;
   min-width: 0;
   max-width: 130px;

@@ -1,4 +1,4 @@
-import type { AppData, BreakRule, OffSymbol } from "../types";
+import type { AppData, BreakRule, ColorBreak, OffSymbol } from "../types";
 
 const STORAGE_KEY = "shift-app:v1";
 
@@ -10,6 +10,14 @@ export const DEFAULT_BREAK_RULES: BreakRule[] = [
   { minMinutes: 7 * 60, breakMinutes: 60 },
   { minMinutes: 8 * 60 + 15, breakMinutes: 75 },
   { minMinutes: 10 * 60, breakMinutes: 90 },
+];
+
+/** 初期値のマスの色と休憩 (勤務先のシフト表: 緑=なし / 水色=45分 / 白=1時間 / 黄=1時間15分) */
+export const DEFAULT_COLOR_BREAKS: ColorBreak[] = [
+  { color: "緑", breakMinutes: 0 },
+  { color: "水色", breakMinutes: 45 },
+  { color: "白", breakMinutes: 60 },
+  { color: "黄", breakMinutes: 75 },
 ];
 
 /** 初期値の休みの記号 */
@@ -33,6 +41,7 @@ export function defaultData(): AppData {
       codes: [],
       offSymbols: DEFAULT_OFF_SYMBOLS,
       breakRules: DEFAULT_BREAK_RULES,
+      colorBreaks: DEFAULT_COLOR_BREAKS,
       readingNotes: "",
       defaultWorkplaceId: null,
       monthlyGoal: null,

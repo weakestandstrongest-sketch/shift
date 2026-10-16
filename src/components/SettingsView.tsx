@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { Store } from "../App";
-import type { BreakRule, OffSymbol, Settings, ShiftCode, Workplace } from "../types";
+import type { BreakRule, ColorBreak, OffSymbol, Settings, ShiftCode, Workplace } from "../types";
 import { OFF_TYPES } from "../types";
 import { newId } from "../lib/shift";
-import { DEFAULT_BREAK_RULES, DEFAULT_GEMINI_MODEL, DEFAULT_OFF_SYMBOLS, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
+import { DEFAULT_BREAK_RULES, DEFAULT_COLOR_BREAKS, DEFAULT_GEMINI_MODEL, DEFAULT_OFF_SYMBOLS, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
 import { todayISO } from "../lib/date";
 
 export function SettingsView({ store }: { store: Store }) {
@@ -17,6 +17,7 @@ export function SettingsView({ store }: { store: Store }) {
   const setWorkplaces = (fn: (w: Workplace[]) => Workplace[]) => setData((d) => ({ ...d, workplaces: fn(d.workplaces) }));
   const setCodes = (fn: (c: ShiftCode[]) => ShiftCode[]) => setSettings({ codes: fn(settings.codes) });
   const setOff = (fn: (o: OffSymbol[]) => OffSymbol[]) => setSettings({ offSymbols: fn(settings.offSymbols) });
+  const setColors = (fn: (c: ColorBreak[]) => ColorBreak[]) => setSettings({ colorBreaks: fn(settings.colorBreaks) });
   const setRules = (fn: (r: BreakRule[]) => BreakRule[]) => setSettings({ breakRules: fn(settings.breakRules) });
   const toHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
   const fromHHMM = (s: string) => {
@@ -213,6 +214,39 @@ export function SettingsView({ store }: { store: Store }) {
         <div className="photo-buttons">
           <button onClick={() => setOff((os) => [...os, { symbol: "", type: "公休" }])}>＋ 記号を追加</button>
           <button onClick={() => setSettings({ offSymbols: DEFAULT_OFF_SYMBOLS })}>初期設定に戻す</button>
+        </div>
+      </section>
+
+      <section className="card">
+        <h3>マスの色と休憩</h3>
+        <p className="muted">シフト表のマスの色で休憩が決まっている場合に使います。色が分かったシフトは、下の休憩ルールよりこちらを優先します。</p>
+        {settings.colorBreaks.map((c, i) => (
+          <div key={i} className="rule-edit">
+            <input
+              className="color-name"
+              value={c.color}
+              aria-label="色"
+              placeholder="水色"
+              onChange={(e) => setColors((cs) => cs.map((x, j) => (j === i ? { ...x, color: e.target.value } : x)))}
+            />
+            <span>→ 休憩</span>
+            <input
+              type="number"
+              min={0}
+              step={15}
+              aria-label="休憩 (分)"
+              value={c.breakMinutes}
+              onChange={(e) => setColors((cs) => cs.map((x, j) => (j === i ? { ...x, breakMinutes: Math.max(0, Number(e.target.value) || 0) } : x)))}
+            />
+            <span>分</span>
+            <button className="icon-btn" aria-label="削除" onClick={() => setColors((cs) => cs.filter((_, j) => j !== i))}>
+              🗑
+            </button>
+          </div>
+        ))}
+        <div className="photo-buttons">
+          <button onClick={() => setColors((cs) => [...cs, { color: "", breakMinutes: 0 }])}>＋ 色を追加</button>
+          <button onClick={() => setSettings({ colorBreaks: DEFAULT_COLOR_BREAKS })}>初期設定に戻す</button>
         </div>
       </section>
 

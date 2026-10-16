@@ -17,44 +17,39 @@ function timeRange(s: Shift): string {
   return `${s.start}–${overnight ? "翌" : ""}${overnight ? s.end.replace(/^0/, "") : s.end}`;
 }
 
-/** 進み具合の円グラフ: 明るい緑 = 働いた分、暗い緑 = 残りの見込み */
+/**
+ * 進み具合の円グラフ (12時の位置から時計回り)。
+ * 暗い緑 = 見込み全体、その上に明るい緑 = 働いた分 を重ねて、すき間なくつなげる。
+ * 表示のたびに時計回りに伸びるアニメーションをする。
+ */
 function Donut({ done, expected, full, label }: { done: number; expected: number; full: number; label: string }) {
   const size = 240;
   const stroke = 30;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const frac = (v: number) => (full > 0 ? Math.min(1, v / full) : 0);
-  // 2 つの弧の間にすき間を空ける (丸い端の分も含めて)
-  const gap = expected > done && done > 0 ? stroke / c + 0.012 : 0;
-  const doneLen = Math.max(0, frac(done) * c);
-  const restStart = frac(done) + gap;
-  const restLen = Math.max(0, (frac(expected) - restStart) * c);
+  const frac = (v: number) => (full > 0 ? Math.min(1, Math.max(0, v / full)) : 0);
+  const arc = (v: number, cls: string) => {
+    const len = frac(v) * c;
+    if (len <= 0) return null;
+    return (
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        className={cls}
+        strokeWidth={stroke}
+        strokeDasharray={`${len} ${c}`}
+        style={{ ["--len" as string]: len }}
+        // -90° 回して 12 時から始め、左右反転なしの向き = 時計回り
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    );
+  };
   return (
     <svg className="donut" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label}>
       <circle cx={size / 2} cy={size / 2} r={r} className="donut-track" strokeWidth={stroke} />
-      {restLen > 0 && (
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          className="donut-rest"
-          strokeWidth={stroke}
-          strokeDasharray={`${restLen} ${c}`}
-          strokeDashoffset={-restStart * c}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      )}
-      {doneLen > 0 && (
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          className="donut-done"
-          strokeWidth={stroke}
-          strokeDasharray={`${doneLen} ${c}`}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      )}
+      {arc(expected, "donut-rest")}
+      {arc(done, "donut-done")}
     </svg>
   );
 }
@@ -143,6 +138,7 @@ export function ListView({ store, ym, setYm, onEdit }: { store: Store; ym: YM; s
 
         <div className="donut-wrap">
           <Donut
+            key={`${ym.year}-${ym.month}`}
             done={doneVal}
             expected={expVal}
             full={full}

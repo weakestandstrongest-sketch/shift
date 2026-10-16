@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AppData, DayOff, OffType, Shift } from "./types";
 import { loadData, saveData } from "./lib/storage";
 import { newId } from "./lib/shift";
@@ -50,17 +50,27 @@ export default function App() {
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
 
-  // 下のバー: 指の位置にハイライトがついてくる (null なら選択中のタブの位置)
+  // 下のバー: タップでハイライトが滑って移動し、指を滑らせるとハイライトがついてくる
   const navRef = useRef<HTMLElement>(null);
+  const [segW, setSegW] = useState(0); // タブ 1 つ分の幅 (px)
   const [drag, setDrag] = useState<{ left: number; index: number } | null>(null);
+  const press = useRef<{ startX: number; dragging: boolean } | null>(null);
   const tabIndex = TABS.findIndex((t) => t.id === tab);
+  const NAV_PAD = 5;
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const measure = () => setSegW((nav.clientWidth - NAV_PAD * 2) / TABS.length);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, []);
   /** バーの中の指の位置から、ハイライトの左端 (px) とタブ番号を出す */
   const pointerToTab = (clientX: number) => {
     const rect = navRef.current!.getBoundingClientRect();
-    const pad = 5;
-    const w = (rect.width - pad * 2) / TABS.length;
-    const left = Math.min(Math.max(clientX - rect.left - pad - w / 2, 0), w * (TABS.length - 1));
-    return { left, index: Math.round(left / w) };
+    const left = Math.min(Math.max(clientX - rect.left - NAV_PAD - segW / 2, 0), segW * (TABS.length - 1));
+    return { left, index: Math.round(left / segW) };
   };
 
   useEffect(() => saveData(data), [data]);
@@ -158,25 +168,39 @@ export default function App() {
 
       <nav
         ref={navRef}
-        className={`tabbar${drag ? " pressing" : ""}`}
+        className={`tabbar${drag ? " dragging" : ""}`}
         aria-label="メニュー"
         onPointerDown={(e) => {
           if (e.pointerType === "mouse" && e.button !== 0) return;
           e.currentTarget.setPointerCapture(e.pointerId);
+          press.current = { startX: e.clientX, dragging: false };
+        }}
+        onPointerMove={(e) => {
+          const p = press.current;
+          if (!p) return;
+          // 少し動かしてから「ドラッグ」とみなす (ただのタップではハイライトを指に飛ばさない)
+          if (!p.dragging && Math.abs(e.clientX - p.startX) < 8) return;
+          p.dragging = true;
           setDrag(pointerToTab(e.clientX));
         }}
-        onPointerMove={(e) => drag && setDrag(pointerToTab(e.clientX))}
         onPointerUp={(e) => {
-          if (!drag) return;
+          if (!press.current) return;
+          press.current = null;
           setTab(TABS[pointerToTab(e.clientX).index].id);
           setDrag(null);
         }}
-        onPointerCancel={() => setDrag(null)}
+        onPointerCancel={() => {
+          press.current = null;
+          setDrag(null);
+        }}
       >
         <span
           className="tab-indicator"
           aria-hidden
-          style={{ transform: drag ? `translateX(${drag.left}px) scale(1.08)` : `translateX(${tabIndex * 100}%)` }}
+          style={{
+            width: segW || undefined,
+            transform: `translateX(${drag ? drag.left : tabIndex * segW}px)${drag ? " scale(1.1, 1.04)" : ""}`,
+          }}
         />
         {TABS.map((t, i) => {
           // ドラッグ中は指の下にあるタブを光らせる

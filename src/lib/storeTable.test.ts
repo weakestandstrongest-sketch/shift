@@ -188,3 +188,38 @@ describe("re-importing a revised table for the same month", () => {
     expect(r.removed).toEqual([]);
   });
 });
+
+describe("break from the cell color", () => {
+  it("maps colors (with naming variants) to breaks", async () => {
+    const { colorBreak } = await import("./extract");
+    const { DEFAULT_COLOR_BREAKS } = await import("./storage");
+    expect(colorBreak("緑", DEFAULT_COLOR_BREAKS)).toBe(0);
+    expect(colorBreak("水色", DEFAULT_COLOR_BREAKS)).toBe(45);
+    expect(colorBreak("青", DEFAULT_COLOR_BREAKS)).toBe(45);
+    expect(colorBreak("白", DEFAULT_COLOR_BREAKS)).toBe(60);
+    expect(colorBreak("黄色", DEFAULT_COLOR_BREAKS)).toBe(75);
+    expect(colorBreak("赤", DEFAULT_COLOR_BREAKS)).toBeNull();
+    expect(colorBreak("", DEFAULT_COLOR_BREAKS)).toBeNull();
+  });
+
+  it("puts the color's break on the imported shift, and leaves it to the rules otherwise", async () => {
+    const { toCandidates } = await import("./extract");
+    const { DEFAULT_COLOR_BREAKS } = await import("./storage");
+    const day = (n: number, raw: string, color: string) => ({
+      date: `2026-10-${String(n).padStart(2, "0")}`, raw, kind: "勤務" as const, color, start: null, end: null, note: "", uncertain: false,
+    });
+    const { work } = toCandidates(
+      { matched_name: "x", names_in_table: [], warnings: [], days: [day(1, "1915F2115", "緑"), day(2, "930F16", "水色"), day(3, "1315F2115", "白"), day(4, "1215F2115", "黄"), day(5, "9-17", "")] },
+      { codes: [], offSymbols: [], colorBreaks: DEFAULT_COLOR_BREAKS },
+      [],
+      [],
+    );
+    expect(work.map((w) => [w.raw, w.breakMinutes])).toEqual([
+      ["1915F2115", 0],
+      ["930F16", 45],
+      ["1315F2115", 60],
+      ["1215F2115", 75],
+      ["9-17", null],
+    ]);
+  });
+});

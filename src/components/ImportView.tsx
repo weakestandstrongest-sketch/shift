@@ -114,7 +114,7 @@ export function ImportView({
       start: c.start,
       end: c.end,
       workplaceId,
-      breakMinutes: null,
+      breakMinutes: c.breakMinutes,
       note: c.note,
       source: "photo",
     }));
@@ -334,6 +334,11 @@ export function ImportView({
                       </div>
                       <div className="badges">
                         {c.needsTime && <span className="badge warn">時間を入力してください</span>}
+                        {c.breakMinutes != null && (
+                          <span className="badge note">
+                            {c.breakMinutes === 0 ? "休憩なし" : `休憩${c.breakMinutes}分`}（{c.color}）
+                          </span>
+                        )}
                         {c.uncertain && <span className="badge warn">読み取りに自信なし</span>}
                         {c.duplicate && <span className="badge">{replace ? "変更なし" : "登録済み"}</span>}
                         {c.note && <span className="badge note">{c.note}</span>}

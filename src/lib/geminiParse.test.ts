@@ -20,8 +20,8 @@ describe("parseGeminiJSON", () => {
       names_in_table: [],
       warnings: [],
       days: [
-        { date: "2026-10-03", raw: "17-L", kind: "勤務", start: "17:00", end: null, note: "ラスト", uncertain: true },
-        { date: "2026-10-04", raw: "*", kind: "不明", start: null, end: null, note: "", uncertain: false },
+        { date: "2026-10-03", raw: "17-L", kind: "勤務", color: "", start: "17:00", end: null, note: "ラスト", uncertain: true },
+        { date: "2026-10-04", raw: "*", kind: "不明", color: "", start: null, end: null, note: "", uncertain: false },
       ],
     });
   });
