@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Store } from "../App";
 import type { CalEvent } from "../types";
 import { parseISODate } from "../lib/date";
@@ -6,6 +6,7 @@ import { newId } from "../lib/shift";
 import { EVENT_COLORS } from "../lib/storage";
 import { Icon } from "./Icon";
 import { KindSwitch } from "./KindSwitch";
+import { Switch } from "./Switch";
 
 interface Props {
   store: Store;
@@ -25,6 +26,7 @@ export function EventSheet({ store, event, date, onClose, onSaved, onDelete, onS
   );
   const set = <K extends keyof CalEvent>(k: K, v: CalEvent[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const allDay = draft.start == null;
+  const allDayId = useId();
   const valid = Boolean(draft.title.trim() && draft.date);
 
   const save = () => {
@@ -45,62 +47,71 @@ export function EventSheet({ store, event, date, onClose, onSaved, onDelete, onS
           </button>
         </div>
 
-        <label>
-          タイトル
+        {/* iOS の設定画面のような、角丸のまとまりに分けて並べる */}
+        <div className="ios-group">
           <input
+            className="ios-field"
+            aria-label="タイトル"
             value={draft.title}
             autoFocus={!event}
-            placeholder="例: 歯医者、友だちとごはん"
+            placeholder="タイトル (例: 歯医者)"
             onChange={(e) => set("title", e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && valid && save()}
           />
-        </label>
-
-        <label>
-          日付
-          <input type="date" value={draft.date} onChange={(e) => set("date", e.target.value)} />
-        </label>
-
-        <label className="check-line">
           <input
-            type="checkbox"
-            checked={allDay}
-            onChange={(e) => setDraft((d) => (e.target.checked ? { ...d, start: null, end: null } : { ...d, start: "10:00", end: "11:00" }))}
+            className="ios-field"
+            aria-label="メモ"
+            value={draft.note}
+            placeholder="メモ (場所や持ち物など)"
+            onChange={(e) => set("note", e.target.value)}
           />
-          <span>終日</span>
-        </label>
-
-        {!allDay && (
-          <div className="row2 event-times">
-            <label>
-              開始
-              <input type="time" value={draft.start ?? ""} onChange={(e) => set("start", e.target.value || "00:00")} />
-            </label>
-            <label>
-              終了
-              <input type="time" value={draft.end ?? ""} onChange={(e) => set("end", e.target.value || null)} />
-            </label>
-          </div>
-        )}
-
-        <div className="color-pick" role="radiogroup" aria-label="色">
-          {EVENT_COLORS.map(({ color, name }) => (
-            <button
-              key={color}
-              role="radio"
-              aria-checked={draft.color === color}
-              aria-label={name}
-              className={draft.color === color ? "on" : ""}
-              style={{ background: color }}
-              onClick={() => set("color", color)}
-            />
-          ))}
         </div>
 
-        <label>
-          メモ
-          <input type="text" value={draft.note} onChange={(e) => set("note", e.target.value)} placeholder="場所や持ち物など" />
-        </label>
+        <div className="ios-group">
+          <label className="ios-row">
+            <span>日付</span>
+            <input className="ios-pill" type="date" value={draft.date} onChange={(e) => set("date", e.target.value)} />
+          </label>
+          <div className="ios-row">
+            <span id={allDayId}>終日</span>
+            <Switch
+              labelledBy={allDayId}
+              checked={allDay}
+              onChange={(on) => setDraft((d) => (on ? { ...d, start: null, end: null } : { ...d, start: "10:00", end: "11:00" }))}
+            />
+          </div>
+          {!allDay && (
+            <>
+              <label className="ios-row">
+                <span>開始</span>
+                <input className="ios-pill time" type="time" value={draft.start ?? ""} onChange={(e) => set("start", e.target.value || "00:00")} />
+              </label>
+              <label className="ios-row">
+                <span>終了</span>
+                <input className="ios-pill time" type="time" value={draft.end ?? ""} onChange={(e) => set("end", e.target.value || null)} />
+              </label>
+            </>
+          )}
+        </div>
+
+        <div className="ios-group">
+          <div className="ios-row">
+            <span>色</span>
+            <div className="color-pick" role="radiogroup" aria-label="色">
+              {EVENT_COLORS.map(({ color, name }) => (
+                <button
+                  key={color}
+                  role="radio"
+                  aria-checked={draft.color === color}
+                  aria-label={name}
+                  className={draft.color === color ? "on" : ""}
+                  style={{ background: color }}
+                  onClick={() => set("color", color)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
 
         <button className="primary wide" disabled={!valid} onClick={save}>
           {event ? "保存" : "追加する"}

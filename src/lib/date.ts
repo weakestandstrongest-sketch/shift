@@ -25,6 +25,12 @@ export function addMonths(year: number, month: number, delta: number): { year: n
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
 }
 
+/** "2026-10-16" に日数を足す */
+export function addDays(iso: string, days: number): string {
+  const d = parseISODate(iso);
+  return toISODate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days));
+}
+
 /**
  * 月表示カレンダー用に、日曜始まりで 6 週 (42 マス) 分の日付を返す。
  * 前月・翌月の日付も含む。

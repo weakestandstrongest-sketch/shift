@@ -1,9 +1,10 @@
-import { useRef } from "react";
+import { useState } from "react";
 import type { Store } from "../App";
 import type { CalEvent, OffType, Shift } from "../types";
-import { addMonths, calendarGrid, isValidISODate, parseISODate, todayISO, WEEKDAYS } from "../lib/date";
+import { addDays, addMonths, calendarGrid, isValidISODate, parseISODate, todayISO, WEEKDAYS } from "../lib/date";
 import { formatHours, isFinished, shiftsInMonth, sortShifts, summarize, workMinutes } from "../lib/shift";
 import { Icon } from "./Icon";
+import { MonthGrid } from "./MonthGrid";
 import type { YM } from "./MonthNav";
 
 interface Props {
@@ -36,6 +37,7 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onEditE
   const eventsByDate = new Map<string, CalEvent[]>();
   for (const e of [...data.events].sort(eventOrder)) eventsByDate.set(e.date, [...(eventsByDate.get(e.date) ?? []), e]);
   const colorOf = (s: Shift) => data.workplaces.find((w) => w.id === s.workplaceId)?.color ?? "var(--accent)";
+  const placeOf = (s: Shift) => data.workplaces.find((w) => w.id === s.workplaceId)?.name ?? "";
 
   // 6 週目が丸ごと翌月なら表示しない
   let cells = calendarGrid(ym.year, ym.month);
@@ -61,8 +63,8 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onEditE
     ...(eventsByDate.get(selected) ?? []).map((event) => ({ kind: "event" as const, key: event.start ?? "", event })),
   ].sort((a, b) => a.key.localeCompare(b.key));
 
-  // 左右スワイプで月を切り替える
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  // 1週間だけ表示しているときは、‹ › とスワイプで週を動かす
+  const [weekMode, setWeekMode] = useState(false);
   /** 月を切り替える。選んでいる日もその月に合わせる (今月なら今日、ほかの月は 1日) */
   const move = (delta: number) => {
     const next = addMonths(ym.year, ym.month, delta);
@@ -76,6 +78,7 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onEditE
     onSelect(iso);
     setYm({ year: d.getFullYear(), month: d.getMonth() + 1 });
   };
+  const step = (dir: 1 | -1) => (weekMode ? jump(addDays(selected, dir * 7)) : move(dir));
 
   return (
     <div className="home">
@@ -85,10 +88,10 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onEditE
           <span className="big-year">{ym.year}年</span>
         </button>
         <div className="head-actions">
-          <button className="round-btn" aria-label="前の月" onClick={() => move(-1)}>
+          <button className="round-btn" aria-label={weekMode ? "前の週" : "前の月"} onClick={() => step(-1)}>
             <Icon name="left" />
           </button>
-          <button className="round-btn" aria-label="次の月" onClick={() => move(1)}>
+          <button className="round-btn" aria-label={weekMode ? "次の週" : "次の月"} onClick={() => step(1)}>
             <Icon name="right" />
           </button>
           {/* 透明な日付入力を重ねて、タップで端末の日付ピッカーを開く */}
@@ -110,54 +113,19 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onEditE
         </div>
       </header>
 
-      <div
-        className="cal"
-        onTouchStart={(e) => (touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY })}
-        onTouchEnd={(e) => {
-          const s = touchStart.current;
-          touchStart.current = null;
-          if (!s) return;
-          const dx = e.changedTouches[0].clientX - s.x;
-          const dy = e.changedTouches[0].clientY - s.y;
-          // ななめのスクロールで月が変わらないよう、横にはっきり動かしたときだけ
-          if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
-        }}
-      >
-        {WEEKDAYS.map((w, i) => (
-          <div key={w} className={`cal-wd wd-${i}`}>
-            {w}
-          </div>
-        ))}
-        {cells.map((c) => {
-          const list = byDate.get(c.iso) ?? [];
-          const off = offByDate.get(c.iso);
-          const evs = eventsByDate.get(c.iso) ?? [];
-          return (
-            <button
-              key={c.iso}
-              className={`cal-day${c.inMonth ? "" : " out"}${c.iso === selected ? " sel" : ""}${c.iso === today ? " today" : ""}`}
-              onClick={() => onSelect(c.iso)}
-              aria-label={`${c.iso}${list.length ? ` シフト${list.length}件` : ""}${off ? ` ${off}` : ""}${evs.length ? ` 予定${evs.length}件` : ""}`}
-            >
-              <span className={`num wd-${c.weekday}`}>{c.day}</span>
-              {list.length > 0 && (
-                <span className="cal-shift" style={{ color: colorOf(list[0]) }}>
-                  {list[0].start.replace(/^0/, "")}
-                  {list.length > 1 && <small>+{list.length - 1}</small>}
-                </span>
-              )}
-              {list.length === 0 && off && <span className={`cal-off off-${off}`}>{off}</span>}
-              {evs.length > 0 && (
-                <span className="cal-dots" aria-hidden>
-                  {evs.slice(0, 3).map((e) => (
-                    <i key={e.id} style={{ background: e.color }} />
-                  ))}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <MonthGrid
+        cells={cells}
+        selected={selected}
+        today={today}
+        onSelect={onSelect}
+        shiftsOf={(d) => byDate.get(d) ?? []}
+        offOf={(d) => offByDate.get(d)}
+        eventsOf={(d) => eventsByDate.get(d) ?? []}
+        colorOf={colorOf}
+        placeOf={placeOf}
+        onSwipe={step}
+        onWeekMode={setWeekMode}
+      />
 
       <button className="board" onClick={goList}>
         <svg className="ring" width="64" height="64" viewBox="0 0 64 64" aria-hidden>
