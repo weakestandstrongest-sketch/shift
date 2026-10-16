@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Store } from "../App";
-import type { Shift } from "../types";
+import type { OffType, Shift } from "../types";
+import { OFF_TYPES } from "../types";
 import { calendarGrid, formatDateJa, todayISO, WEEKDAYS } from "../lib/date";
 import { formatHours, shiftsInMonth, sortShifts, summarize, workMinutes } from "../lib/shift";
 import { MonthNav, type YM } from "./MonthNav";
@@ -22,6 +23,8 @@ export function CalendarView({ store, ym, setYm }: { store: Store; ym: YM; setYm
   const summary = summarize(shiftsInMonth(data.shifts, ym.year, ym.month), data.workplaces, rules);
   const today = todayISO();
   const dayShifts = selected ? sortShifts(byDate.get(selected) ?? []) : [];
+  const offByDate = new Map(data.daysOff.map((d) => [d.date, d.type]));
+  const selectedOff = selected ? offByDate.get(selected) ?? null : null;
 
   return (
     <div>
@@ -47,6 +50,7 @@ export function CalendarView({ store, ym, setYm }: { store: Store; ym: YM; setYm
                 </span>
               ))}
               {list.length > 2 && <span className="more">+{list.length - 2}</span>}
+              {list.length === 0 && offByDate.has(c.iso) && <span className={`off-tag off-${offByDate.get(c.iso)}`}>{offByDate.get(c.iso)}</span>}
             </button>
           );
         })}
@@ -76,7 +80,20 @@ export function CalendarView({ store, ym, setYm }: { store: Store; ym: YM; setYm
               ＋ 追加
             </button>
           </div>
-          {dayShifts.length === 0 && <p className="muted">シフトはありません</p>}
+          <label className="off-picker">
+            休み
+            <select
+              value={selectedOff ?? ""}
+              className={selectedOff ? `off-select off-${selectedOff}` : ""}
+              onChange={(e) => store.setDayOff(selected, (e.target.value || null) as OffType | null)}
+            >
+              <option value="">なし</option>
+              {OFF_TYPES.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          </label>
+          {dayShifts.length === 0 && !selectedOff && <p className="muted">シフトはありません</p>}
           {dayShifts.map((s) => {
             const wp = data.workplaces.find((w) => w.id === s.workplaceId);
             return (

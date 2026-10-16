@@ -58,19 +58,19 @@ describe("toCandidates", () => {
     matched_name: "山田",
     names_in_table: [],
     warnings: [],
-    shifts: [
-      { date: "2026-10-05", raw: "9-17", start: "9:00", end: "17:00", note: "", uncertain: false },
-      { date: "2026-10-02", raw: "早", start: null, end: null, note: "", uncertain: false },
-      { date: "2026-10-03", raw: "17-L", start: "17:00", end: null, note: "ラスト", uncertain: true },
-      { date: "2026-10-04", raw: "10-14", start: "10:00", end: "14:00", note: "", uncertain: false },
-      { date: "2026-02-30", raw: "?", start: "10:00", end: "14:00", note: "", uncertain: false },
+    days: [
+      { date: "2026-10-05", raw: "9-17", kind: "勤務", start: "9:00", end: "17:00", note: "", uncertain: false },
+      { date: "2026-10-02", raw: "早", kind: "勤務", start: null, end: null, note: "", uncertain: false },
+      { date: "2026-10-03", raw: "17-L", kind: "勤務", start: "17:00", end: null, note: "ラスト", uncertain: true },
+      { date: "2026-10-04", raw: "10-14", kind: "勤務", start: "10:00", end: "14:00", note: "", uncertain: false },
+      { date: "2026-02-30", raw: "?", kind: "勤務", start: "10:00", end: "14:00", note: "", uncertain: false },
     ],
   };
   const codes = [{ code: "早", start: "07:00", end: "13:00" }];
   const existing = [shift({ date: "2026-10-04", start: "10:00", end: "14:00" })];
 
   it("resolves codes, flags missing times and duplicates, and drops invalid dates", () => {
-    const cs = toCandidates(extraction, codes, existing);
+    const cs = toCandidates(extraction, { codes, offSymbols: [] }, existing, []).work;
     expect(cs.map((c) => [c.date, c.start, c.end, c.needsTime, c.duplicate, c.selected])).toEqual([
       ["2026-10-02", "07:00", "13:00", false, false, true],
       ["2026-10-03", "17:00", "", true, false, false],

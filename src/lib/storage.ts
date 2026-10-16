@@ -1,4 +1,4 @@
-import type { AppData, BreakRule } from "../types";
+import type { AppData, BreakRule, OffSymbol } from "../types";
 
 const STORAGE_KEY = "shift-app:v1";
 
@@ -12,6 +12,14 @@ export const DEFAULT_BREAK_RULES: BreakRule[] = [
   { minMinutes: 10 * 60, breakMinutes: 90 },
 ];
 
+/** 初期値の休みの記号 */
+export const DEFAULT_OFF_SYMBOLS: OffSymbol[] = [
+  { symbol: "空欄", type: "公休" },
+  { symbol: "*", type: "希望休" },
+  { symbol: "有", type: "有給" },
+  { symbol: "△", type: "無視" },
+];
+
 export const WORKPLACE_COLORS = ["#2f80ed", "#eb5757", "#27ae60", "#f2994a", "#9b51e0", "#00a3a3", "#d6336c", "#828282"];
 
 export function defaultData(): AppData {
@@ -23,12 +31,14 @@ export function defaultData(): AppData {
       geminiApiKey: "",
       geminiModel: DEFAULT_GEMINI_MODEL,
       codes: [],
+      offSymbols: DEFAULT_OFF_SYMBOLS,
       breakRules: DEFAULT_BREAK_RULES,
       readingNotes: "",
       defaultWorkplaceId: null,
     },
     workplaces: [],
     shifts: [],
+    daysOff: [],
   };
 }
 
@@ -47,6 +57,7 @@ export function migrate(raw: unknown): AppData {
     settings,
     workplaces: Array.isArray(r.workplaces) ? r.workplaces : [],
     shifts: Array.isArray(r.shifts) ? r.shifts : [],
+    daysOff: Array.isArray(r.daysOff) ? r.daysOff : [],
   };
 }
 

@@ -9,25 +9,31 @@ describe("parseGeminiJSON", () => {
         matched_name: "山田",
         names_in_table: [],
         warnings: [],
-        shifts: [{ date: "2026-10-03", raw: "17-L", start: "17:00", end: "", note: "ラスト", uncertain: true }],
+        days: [
+          { date: "2026-10-03", raw: "17-L", kind: "勤務", start: "17:00", end: "", note: "ラスト", uncertain: true },
+          { date: "2026-10-04", raw: "*", kind: "よく分からない", start: "", end: "", note: "", uncertain: false },
+        ],
       }),
     );
     expect(r).toEqual({
       matched_name: "山田",
       names_in_table: [],
       warnings: [],
-      shifts: [{ date: "2026-10-03", raw: "17-L", start: "17:00", end: null, note: "ラスト", uncertain: true }],
+      days: [
+        { date: "2026-10-03", raw: "17-L", kind: "勤務", start: "17:00", end: null, note: "ラスト", uncertain: true },
+        { date: "2026-10-04", raw: "*", kind: "不明", start: null, end: null, note: "", uncertain: false },
+      ],
     });
   });
 
   it("treats an empty matched_name as not found and fills missing fields", () => {
     const r = parseGeminiJSON('```json\n{"matched_name": "", "names_in_table": ["佐藤"]}\n```');
-    expect(r).toEqual({ matched_name: null, names_in_table: ["佐藤"], shifts: [], warnings: [] });
+    expect(r).toEqual({ matched_name: null, names_in_table: ["佐藤"], days: [], warnings: [] });
   });
 
   it("returns null for non-JSON or wrong shapes", () => {
     expect(parseGeminiJSON("すみません、読めませんでした")).toBeNull();
-    expect(parseGeminiJSON('{"shifts": "none"}')).toBeNull();
+    expect(parseGeminiJSON('{"days": "none"}')).toBeNull();
   });
 });
 

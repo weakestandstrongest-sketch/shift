@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { Store } from "../App";
-import type { BreakRule, Settings, ShiftCode, Workplace } from "../types";
+import type { BreakRule, OffSymbol, Settings, ShiftCode, Workplace } from "../types";
+import { OFF_TYPES } from "../types";
 import { newId } from "../lib/shift";
-import { DEFAULT_BREAK_RULES, DEFAULT_GEMINI_MODEL, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
+import { DEFAULT_BREAK_RULES, DEFAULT_GEMINI_MODEL, DEFAULT_OFF_SYMBOLS, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
 import { todayISO } from "../lib/date";
 
 export function SettingsView({ store }: { store: Store }) {
@@ -15,6 +16,7 @@ export function SettingsView({ store }: { store: Store }) {
 
   const setWorkplaces = (fn: (w: Workplace[]) => Workplace[]) => setData((d) => ({ ...d, workplaces: fn(d.workplaces) }));
   const setCodes = (fn: (c: ShiftCode[]) => ShiftCode[]) => setSettings({ codes: fn(settings.codes) });
+  const setOff = (fn: (o: OffSymbol[]) => OffSymbol[]) => setSettings({ offSymbols: fn(settings.offSymbols) });
   const setRules = (fn: (r: BreakRule[]) => BreakRule[]) => setSettings({ breakRules: fn(settings.breakRules) });
   const toHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
   const fromHHMM = (s: string) => {
@@ -181,6 +183,39 @@ export function SettingsView({ store }: { store: Store }) {
       </section>
 
       <section className="card">
+        <h3>休みの記号</h3>
+        <p className="muted">シフト表でこの記号が書かれた日は、勤務ではなく休みとして登録します。「空欄」は何も書かれていないマス (色だけのマスも含む) です。</p>
+        {settings.offSymbols.map((o, i) => (
+          <div key={i} className="code-edit">
+            <input
+              value={o.symbol}
+              aria-label="記号"
+              placeholder="*"
+              onChange={(e) => setOff((os) => os.map((x, j) => (j === i ? { ...x, symbol: e.target.value } : x)))}
+            />
+            <span>→</span>
+            <select
+              aria-label="休みの種類"
+              value={o.type}
+              onChange={(e) => setOff((os) => os.map((x, j) => (j === i ? { ...x, type: e.target.value as OffSymbol["type"] } : x)))}
+            >
+              {OFF_TYPES.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+              <option value="無視">無視 (登録しない)</option>
+            </select>
+            <button className="icon-btn" aria-label="削除" onClick={() => setOff((os) => os.filter((_, j) => j !== i))}>
+              🗑
+            </button>
+          </div>
+        ))}
+        <div className="photo-buttons">
+          <button onClick={() => setOff((os) => [...os, { symbol: "", type: "公休" }])}>＋ 記号を追加</button>
+          <button onClick={() => setSettings({ offSymbols: DEFAULT_OFF_SYMBOLS })}>初期設定に戻す</button>
+        </div>
+      </section>
+
+      <section className="card">
         <h3>休憩ルール</h3>
         <p className="muted">
           拘束時間 (開始〜終了) が左の時間以上なら、右の分だけ休憩を自動で引いて実働時間と給料を計算します。シフトごとに手入力した休憩があればそちらを使います。
@@ -226,7 +261,7 @@ export function SettingsView({ store }: { store: Store }) {
         <textarea
           rows={5}
           value={settings.readingNotes}
-          placeholder={"例:\n・「*」は休み\n・「有」は有給休暇\n・時間が書かれていない緑のマスは他店勤務"}
+          placeholder={"例:\n・右側の「週報」の列は担当者のメモなので無視する\n・「L」はラスト (閉店) まで"}
           onChange={(e) => setSettings({ readingNotes: e.target.value })}
         />
       </section>

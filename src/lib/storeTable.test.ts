@@ -67,11 +67,75 @@ describe("toCandidates trusts the written code over the AI's conversion", () => 
         matched_name: "出麹",
         names_in_table: [],
         warnings: [],
-        shifts: [{ date: "2026-10-02", raw: "930F16", start: "09:03", end: "16:00", note: "", uncertain: false }],
+        days: [{ date: "2026-10-02", raw: "930F16", kind: "勤務", start: "09:03", end: "16:00", note: "", uncertain: false }],
       },
+      { codes: [], offSymbols: [] },
+      [],
+      [],
+    ).work;
+    expect(cs[0]).toMatchObject({ start: "09:30", end: "16:00", needsTime: false, selected: true });
+  });
+});
+
+describe("days off from the store's symbols", () => {
+  it("splits a column into work days and 公休 / 希望休 / 有給, ignoring △", async () => {
+    const { toCandidates } = await import("./extract");
+    const { DEFAULT_OFF_SYMBOLS } = await import("./storage");
+    const day = (d: number, raw: string, kind: "勤務" | "公休" | "希望休" | "有給" | "不明" = "不明") => ({
+      date: `2026-10-${String(d).padStart(2, "0")}`,
+      raw,
+      kind,
+      start: null,
+      end: null,
+      note: "",
+      uncertain: false,
+    });
+    const { work, off } = toCandidates(
+      {
+        matched_name: "出麹",
+        names_in_table: [],
+        warnings: [],
+        days: [
+          day(1, ""), // 空欄 → 公休 (AI の判断が何であっても記号の設定を優先)
+          day(2, "930F16", "勤務"),
+          day(3, "＊"), // 全角でも * として扱う
+          day(6, "有"),
+          day(13, "*", "公休"),
+          day(26, "△"),
+          day(28, "", "勤務"), // 色だけのマスを AI が勤務と誤解しても、空欄なので公休
+        ],
+      },
+      { codes: [], offSymbols: DEFAULT_OFF_SYMBOLS },
+      [],
+      [{ id: "x", date: "2026-10-06", type: "有給" }],
+    );
+    expect(work.map((w) => [w.date, w.start, w.end])).toEqual([["2026-10-02", "09:30", "16:00"]]);
+    expect(off.map((o) => [o.date, o.type, o.duplicate, o.selected])).toEqual([
+      ["2026-10-01", "公休", false, true],
+      ["2026-10-03", "希望休", false, true],
+      ["2026-10-06", "有給", true, false],
+      ["2026-10-13", "希望休", false, true],
+      ["2026-10-28", "公休", false, true],
+    ]);
+  });
+
+  it("falls back to the AI's judgement for symbols the user has not registered", async () => {
+    const { toCandidates } = await import("./extract");
+    const { off, work } = toCandidates(
+      {
+        matched_name: "a",
+        names_in_table: [],
+        warnings: [],
+        days: [
+          { date: "2026-10-01", raw: "休", kind: "公休", start: null, end: null, note: "", uncertain: false },
+          { date: "2026-10-02", raw: "?", kind: "不明", start: null, end: null, note: "", uncertain: false },
+        ],
+      },
+      { codes: [], offSymbols: [] },
       [],
       [],
     );
-    expect(cs[0]).toMatchObject({ start: "09:30", end: "16:00", needsTime: false, selected: true });
+    expect(off.map((o) => [o.date, o.type])).toEqual([["2026-10-01", "公休"]]);
+    expect(work).toEqual([]);
   });
 });

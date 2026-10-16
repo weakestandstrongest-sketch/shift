@@ -302,6 +302,61 @@ label {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.off-tag {
+  font-size: 10px;
+  border-radius: 4px;
+  padding: 1px 4px;
+  white-space: nowrap;
+  background: var(--off-bg);
+  color: var(--off-fg);
+}
+.off-公休 {
+  --off-bg: color-mix(in srgb, var(--muted) 18%, transparent);
+  --off-fg: var(--muted);
+}
+.off-希望休 {
+  --off-bg: color-mix(in srgb, #9b51e0 16%, transparent);
+  --off-fg: #9b51e0;
+}
+.off-有給 {
+  --off-bg: color-mix(in srgb, #f2994a 20%, transparent);
+  --off-fg: #c46a12;
+}
+.off-select {
+  background: var(--off-bg);
+  color: var(--off-fg);
+  font-weight: 600;
+}
+.off-picker {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.off-picker select {
+  width: auto;
+}
+.off-counts {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.off-counts .off-tag {
+  font-size: 13px;
+  padding: 2px 8px;
+}
+.sub-head {
+  margin: 16px 0 4px;
+}
+.off-list li {
+  align-items: center;
+}
+.off-list .off-date {
+  min-width: 96px;
+}
+.off-list select {
+  width: auto;
+  padding: 4px 8px;
+}
 .more {
   font-size: 10px;
   color: var(--muted);

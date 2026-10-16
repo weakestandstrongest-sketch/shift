@@ -12,6 +12,24 @@ export interface BreakRule {
   breakMinutes: number;
 }
 
+/** 休みの種類 */
+export type OffType = "公休" | "希望休" | "有給";
+export const OFF_TYPES: OffType[] = ["公休", "希望休", "有給"];
+
+/** 休みの日 (勤務とは別に記録する) */
+export interface DayOff {
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  type: OffType;
+}
+
+/** シフト表で休みを表す記号。symbol が「空欄」なら何も書かれていないマス。「無視」は読み飛ばす */
+export interface OffSymbol {
+  symbol: string;
+  type: OffType | "無視";
+}
+
 /** シフト表の記号 (例: 「早」= 9:00〜17:00) */
 export interface ShiftCode {
   code: string;
@@ -42,6 +60,7 @@ export interface Settings {
   geminiApiKey: string;
   geminiModel: string;
   codes: ShiftCode[];
+  offSymbols: OffSymbol[];
   breakRules: BreakRule[];
   /** AI に伝える、このシフト表の読み方 (記号や色の意味など) */
   readingNotes: string;
@@ -53,4 +72,5 @@ export interface AppData {
   settings: Settings;
   workplaces: Workplace[];
   shifts: Shift[];
+  daysOff: DayOff[];
 }

@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import type { Store } from "../App";
-import type { Shift } from "../types";
+import type { DayOff, OffType, Shift } from "../types";
+import { OFF_TYPES } from "../types";
 import { formatDateJa, parseISODate } from "../lib/date";
-import type { Candidate, Extraction } from "../lib/extract";
+import type { Candidate, Extraction, OffCandidate } from "../lib/extract";
 import { prepareImage, type PreparedImage } from "../lib/image";
 import { isDuplicate, newId } from "../lib/shift";
 
@@ -24,6 +25,7 @@ export function ImportView({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Extraction | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [offCandidates, setOffCandidates] = useState<OffCandidate[]>([]);
   const cameraRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
 
@@ -48,12 +50,15 @@ export function ImportView({
     setError(null);
     setResult(null);
     setCandidates([]);
+    setOffCandidates([]);
     try {
       // AI の SDK は大きいので、読み取りを実行するときだけ読み込む
       const { extractShifts, toCandidates } = await import("../lib/extract");
       const r = await extractShifts(images, settings, targetMonth || null);
       setResult(r);
-      setCandidates(toCandidates(r, settings.codes, data.shifts));
+      const { work, off } = toCandidates(r, settings, data.shifts, data.daysOff);
+      setCandidates(work);
+      setOffCandidates(off);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -79,9 +84,14 @@ export function ImportView({
     );
   }
 
+  function updateOff(key: string, patch: Partial<OffCandidate>) {
+    setOffCandidates((cs) => cs.map((c) => (c.key === key ? { ...c, ...patch } : c)));
+  }
+
   function commit() {
     const chosen = candidates.filter((c) => c.selected && !c.needsTime);
-    if (chosen.length === 0) return;
+    const chosenOff = offCandidates.filter((c) => c.selected);
+    if (chosen.length + chosenOff.length === 0) return;
     const shifts: Shift[] = chosen.map((c) => ({
       id: newId(),
       date: c.date,
@@ -92,11 +102,14 @@ export function ImportView({
       note: c.note,
       source: "photo",
     }));
+    const daysOff: DayOff[] = chosenOff.map((c) => ({ id: newId(), date: c.date, type: c.type }));
     store.addShifts(shifts);
-    const first = parseISODate(chosen[0].date);
+    store.addDaysOff(daysOff);
+    const first = parseISODate([...chosen, ...chosenOff].map((c) => c.date).sort()[0]);
     setImages([]);
     setResult(null);
     setCandidates([]);
+    setOffCandidates([]);
     onImported(first.getFullYear(), first.getMonth() + 1);
   }
 
@@ -119,7 +132,7 @@ export function ImportView({
     );
   }
 
-  const selectedCount = candidates.filter((c) => c.selected && !c.needsTime).length;
+  const selectedCount = candidates.filter((c) => c.selected && !c.needsTime).length + offCandidates.filter((c) => c.selected).length;
 
   return (
     <div>
@@ -209,7 +222,13 @@ export function ImportView({
         <div className="card">
           {result.matched_name ? (
             <p>
-              シフト表の「<strong>{result.matched_name}</strong>」さんの勤務を <strong>{candidates.length}件</strong> 見つけました。
+              シフト表の「<strong>{result.matched_name}</strong>」さんの勤務を <strong>{candidates.length}日</strong>
+              {offCandidates.length > 0 && (
+                <>
+                  、休みを <strong>{offCandidates.length}日</strong>
+                </>
+              )}
+              見つけました。
             </p>
           ) : (
             <div className="error">
@@ -264,10 +283,44 @@ export function ImportView({
                   </li>
                 ))}
               </ul>
-              <button className="primary wide" disabled={selectedCount === 0} onClick={commit}>
-                {selectedCount}件をカレンダーに追加
-              </button>
             </>
+          )}
+
+          {offCandidates.length > 0 && (
+            <>
+              <h3 className="sub-head">休み</h3>
+              <ul className="candidates off-list">
+                {offCandidates.map((c) => (
+                  <li key={c.key} className={c.selected ? "on" : ""}>
+                    <input
+                      type="checkbox"
+                      aria-label={`${formatDateJa(c.date)}の休みを追加する`}
+                      checked={c.selected}
+                      onChange={(e) => updateOff(c.key, { selected: e.target.checked })}
+                    />
+                    <strong className="off-date">{formatDateJa(c.date)}</strong>
+                    <select
+                      aria-label="休みの種類"
+                      value={c.type}
+                      className={`off-select off-${c.type}`}
+                      onChange={(e) => updateOff(c.key, { type: e.target.value as OffType })}
+                    >
+                      {OFF_TYPES.map((t) => (
+                        <option key={t}>{t}</option>
+                      ))}
+                    </select>
+                    <span className="raw">表記: {c.raw || "空欄"}</span>
+                    {c.duplicate && <span className="badge">登録済み</span>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {(candidates.length > 0 || offCandidates.length > 0) && (
+            <button className="primary wide" disabled={selectedCount === 0} onClick={commit}>
+              {selectedCount}件をカレンダーに追加
+            </button>
           )}
         </div>
       )}

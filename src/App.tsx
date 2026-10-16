@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import type { AppData, Shift } from "./types";
+import type { AppData, DayOff, OffType, Shift } from "./types";
 import { loadData, saveData } from "./lib/storage";
+import { newId } from "./lib/shift";
 import { CalendarView } from "./components/CalendarView";
 import { ImportView } from "./components/ImportView";
 import { ListView } from "./components/ListView";
@@ -21,6 +22,10 @@ export interface Store {
   upsertShift: (s: Shift) => void;
   deleteShift: (id: string) => void;
   addShifts: (s: Shift[]) => void;
+  /** 休みを登録する。同じ日の休みは置き換える */
+  addDaysOff: (d: DayOff[]) => void;
+  /** その日の休みを設定する (null で取り消し) */
+  setDayOff: (date: string, type: OffType | null) => void;
 }
 
 export default function App() {
@@ -41,6 +46,16 @@ export default function App() {
       })),
     deleteShift: (id) => setDataState((d) => ({ ...d, shifts: d.shifts.filter((x) => x.id !== id) })),
     addShifts: (ss) => setDataState((d) => ({ ...d, shifts: [...d.shifts, ...ss] })),
+    addDaysOff: (list) =>
+      setDataState((d) => {
+        const dates = new Set(list.map((x) => x.date));
+        return { ...d, daysOff: [...d.daysOff.filter((x) => !dates.has(x.date)), ...list] };
+      }),
+    setDayOff: (date, type) =>
+      setDataState((d) => ({
+        ...d,
+        daysOff: [...d.daysOff.filter((x) => x.date !== date), ...(type ? [{ id: newId(), date, type }] : [])],
+      })),
   };
 
   return (

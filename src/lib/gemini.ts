@@ -1,21 +1,22 @@
 import { ApiError, createPartFromBase64, createUserContent, FinishReason, GoogleGenAI } from "@google/genai";
-import { ExtractionError, type Extraction, type GeminiRequest } from "./extract";
+import { DAY_KINDS, ExtractionError, type Extraction, type GeminiRequest } from "./extract";
 import { DEFAULT_GEMINI_MODEL } from "./storage";
 import { parseGeminiJSON } from "./geminiParse";
 
 // Gemini が対応する JSON Schema の範囲に収まるよう、null や anyOf を使わない形にする
 // (分からない値は空文字 "" で返してもらい、parseGeminiJSON で null に戻す)
-const shiftSchema = {
+const daySchema = {
   type: "object",
   properties: {
     date: { type: "string", description: "YYYY-MM-DD" },
-    raw: { type: "string" },
+    raw: { type: "string", description: "マスの文字そのまま。何も書かれていなければ空文字" },
+    kind: { type: "string", enum: DAY_KINDS },
     start: { type: "string", description: "HH:MM。不明なら空文字" },
     end: { type: "string", description: "HH:MM。不明なら空文字" },
     note: { type: "string" },
     uncertain: { type: "boolean" },
   },
-  required: ["date", "raw", "start", "end", "note", "uncertain"],
+  required: ["date", "raw", "kind", "start", "end", "note", "uncertain"],
 };
 
 const responseSchema = {
@@ -23,10 +24,10 @@ const responseSchema = {
   properties: {
     matched_name: { type: "string", description: "本人として扱った表記。見つからなければ空文字" },
     names_in_table: { type: "array", items: { type: "string" } },
-    shifts: { type: "array", items: shiftSchema },
+    days: { type: "array", items: daySchema },
     warnings: { type: "array", items: { type: "string" } },
   },
-  required: ["matched_name", "names_in_table", "shifts", "warnings"],
+  required: ["matched_name", "names_in_table", "days", "warnings"],
 };
 
 const GEMINI_NOTE = "\n\n※ 回答では null の代わりに空文字 \"\" を使ってください (matched_name / start / end)。";

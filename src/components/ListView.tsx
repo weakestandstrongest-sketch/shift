@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Store } from "../App";
 import type { Shift } from "../types";
+import { OFF_TYPES } from "../types";
 import { formatDateJa, monthKey } from "../lib/date";
 import { buildICS } from "../lib/ics";
 import { formatHours, shiftPay, shiftsInMonth, summarize, workMinutes } from "../lib/shift";
@@ -14,6 +15,10 @@ export function ListView({ store, ym, setYm }: { store: Store; ym: YM; setYm: (y
   const shifts = shiftsInMonth(data.shifts, ym.year, ym.month);
   const rules = data.settings.breakRules;
   const total = summarize(shifts, data.workplaces, rules);
+  const prefix = `${ym.year}-${String(ym.month).padStart(2, "0")}-`;
+  const offCounts = OFF_TYPES.map((t) => [t, data.daysOff.filter((d) => d.type === t && d.date.startsWith(prefix)).length] as const).filter(
+    ([, n]) => n > 0,
+  );
 
   const perWorkplace = [...data.workplaces, null].map((wp) => {
     const list = shifts.filter((s) => (wp ? s.workplaceId === wp.id : !data.workplaces.some((w) => w.id === s.workplaceId)));
@@ -30,6 +35,15 @@ export function ListView({ store, ym, setYm }: { store: Store; ym: YM; setYm: (y
         <p className="muted">
           出勤 {total.days}日 ・ {formatHours(total.minutes)}
         </p>
+        {offCounts.length > 0 && (
+          <p className="off-counts">
+            {offCounts.map(([t, n]) => (
+              <span key={t} className={`off-tag off-${t}`}>
+                {t} {n}日
+              </span>
+            ))}
+          </p>
+        )}
         {perWorkplace
           .filter((p) => p.list.length > 0)
           .map((p) => (
