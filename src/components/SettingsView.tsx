@@ -6,6 +6,7 @@ import { newId } from "../lib/shift";
 import { DEFAULT_BREAK_RULES, DEFAULT_COLOR_BREAKS, DEFAULT_GEMINI_MODEL, DEFAULT_OFF_SYMBOLS, downloadFile, exportJSON, migrate, WORKPLACE_COLORS } from "../lib/storage";
 import { todayISO } from "../lib/date";
 import { UsageMeter } from "./UsageMeter";
+import { Icon } from "./Icon";
 
 export function SettingsView({ store }: { store: Store }) {
   const { data, setData } = store;
@@ -18,6 +19,22 @@ export function SettingsView({ store }: { store: Store }) {
   const setWorkplaces = (fn: (w: Workplace[]) => Workplace[]) => setData((d) => ({ ...d, workplaces: fn(d.workplaces) }));
   const setCodes = (fn: (c: ShiftCode[]) => ShiftCode[]) => setSettings({ codes: fn(settings.codes) });
   const setOff = (fn: (o: OffSymbol[]) => OffSymbol[]) => setSettings({ offSymbols: fn(settings.offSymbols) });
+  const deleteButton = (w: Workplace) => (
+    <button
+      className="icon-btn"
+      aria-label={`${w.name}を削除`}
+      onClick={() => {
+        if (!confirm(`「${w.name}」を削除しますか? (登録済みのシフトは残ります)`)) return;
+        setData((d) => ({
+          ...d,
+          workplaces: d.workplaces.filter((x) => x.id !== w.id),
+          settings: { ...d.settings, defaultWorkplaceId: d.settings.defaultWorkplaceId === w.id ? null : d.settings.defaultWorkplaceId },
+        }));
+      }}
+    >
+      <Icon name="trash" size={20} />
+    </button>
+  );
   const setColors = (fn: (c: ColorBreak[]) => ColorBreak[]) => setSettings({ colorBreaks: fn(settings.colorBreaks) });
   const setRules = (fn: (r: BreakRule[]) => BreakRule[]) => setSettings({ breakRules: fn(settings.breakRules) });
   const toHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
@@ -101,7 +118,8 @@ export function SettingsView({ store }: { store: Store }) {
         <h3>勤務先</h3>
         {data.workplaces.length === 0 && <p className="muted">勤務先を登録すると、色分けと給料計算ができます。</p>}
         {data.workplaces.map((w) => (
-          <div key={w.id} className="wp-edit">
+          <div key={w.id} className="wp-block">
+          <div className="wp-edit">
             <input
               type="color"
               value={w.color}
@@ -113,6 +131,10 @@ export function SettingsView({ store }: { store: Store }) {
               aria-label="勤務先の名前"
               onChange={(e) => setWorkplaces((ws) => ws.map((x) => (x.id === w.id ? { ...x, name: e.target.value } : x)))}
             />
+            {deleteButton(w)}
+          </div>
+          <div className="wp-wage">
+            <span className="muted">時給</span>
             <input
               type="number"
               min={0}
@@ -124,20 +146,7 @@ export function SettingsView({ store }: { store: Store }) {
               }
             />
             <span className="muted">円</span>
-            <button
-              className="icon-btn"
-              aria-label="削除"
-              onClick={() => {
-                if (!confirm(`「${w.name}」を削除しますか? (登録済みのシフトは残ります)`)) return;
-                setData((d) => ({
-                  ...d,
-                  workplaces: d.workplaces.filter((x) => x.id !== w.id),
-                  settings: { ...d.settings, defaultWorkplaceId: d.settings.defaultWorkplaceId === w.id ? null : d.settings.defaultWorkplaceId },
-                }));
-              }}
-            >
-              🗑
-            </button>
+          </div>
           </div>
         ))}
         <button
@@ -180,7 +189,7 @@ export function SettingsView({ store }: { store: Store }) {
             〜
             <input type="time" value={c.end} aria-label="終了" onChange={(e) => setCodes((cs) => cs.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))} />
             <button className="icon-btn" aria-label="削除" onClick={() => setCodes((cs) => cs.filter((_, j) => j !== i))}>
-              🗑
+              <Icon name="trash" size={20} />
             </button>
           </div>
         ))}
@@ -210,7 +219,7 @@ export function SettingsView({ store }: { store: Store }) {
               <option value="無視">無視 (登録しない)</option>
             </select>
             <button className="icon-btn" aria-label="削除" onClick={() => setOff((os) => os.filter((_, j) => j !== i))}>
-              🗑
+              <Icon name="trash" size={20} />
             </button>
           </div>
         ))}
@@ -243,7 +252,7 @@ export function SettingsView({ store }: { store: Store }) {
             />
             <span>分</span>
             <button className="icon-btn" aria-label="削除" onClick={() => setColors((cs) => cs.filter((_, j) => j !== i))}>
-              🗑
+              <Icon name="trash" size={20} />
             </button>
           </div>
         ))}
@@ -280,7 +289,7 @@ export function SettingsView({ store }: { store: Store }) {
               />
               <span>分</span>
               <button className="icon-btn" aria-label="削除" onClick={() => setRules((rs) => rs.filter((_, j) => j !== i))}>
-                🗑
+                <Icon name="trash" size={20} />
               </button>
             </div>
           ))}
@@ -305,12 +314,16 @@ export function SettingsView({ store }: { store: Store }) {
       </section>
 
       <section className="card">
-        <h3>データ</h3>
+        <h3>バックアップ</h3>
         <p className="muted">データはこのブラウザの中に保存されています。機種変更の前にはバックアップしてください。</p>
         <div className="photo-buttons">
-          <button onClick={() => downloadFile(`shift-backup-${todayISO()}.json`, exportJSON(data), "application/json")}>バックアップを保存</button>
+          <button onClick={() => downloadFile(`shift-backup-${todayISO()}.json`, exportJSON(data), "application/json")}>
+            <Icon name="download" size={20} />
+            保存する
+          </button>
           <label className="button">
-            バックアップから復元
+            <Icon name="upload" size={20} />
+            復元する
             <input
               type="file"
               accept="application/json"

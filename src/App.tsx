@@ -77,6 +77,8 @@ export default function App() {
   };
 
   useEffect(() => saveData(data), [data]);
+  // タブを切り替えたら一番上から見せる
+  useEffect(() => window.scrollTo(0, 0), [tab]);
 
   const showToast = (t: Toast) => {
     window.clearTimeout(toastTimer.current);

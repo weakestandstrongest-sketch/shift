@@ -223,3 +223,23 @@ describe("break from the cell color", () => {
     ]);
   });
 });
+
+describe("color vs. length-based break", () => {
+  it("flags a color whose break disagrees with the length rule (possible misread)", async () => {
+    const { toCandidates } = await import("./extract");
+    const { DEFAULT_COLOR_BREAKS, DEFAULT_BREAK_RULES } = await import("./storage");
+    const day = (n: number, raw: string, color: string) => ({
+      date: `2026-10-0${n}`, raw, kind: "勤務" as const, color, start: null, end: null, note: "", uncertain: false,
+    });
+    const { work } = toCandidates(
+      { matched_name: "x", names_in_table: [], warnings: [], days: [day(1, "930F16", "水色"), day(2, "1915F2115", "白")] },
+      { codes: [], offSymbols: [], colorBreaks: DEFAULT_COLOR_BREAKS, breakRules: DEFAULT_BREAK_RULES },
+      [],
+      [],
+    );
+    expect(work.map((w) => [w.raw, w.breakMinutes, w.ruleBreakIfDifferent])).toEqual([
+      ["930F16", 45, null], // 6.5時間・水色 = 45分 → 一致
+      ["1915F2115", 60, 0], // 2時間なのに白 (1時間) → 読み違いかも
+    ]);
+  });
+});

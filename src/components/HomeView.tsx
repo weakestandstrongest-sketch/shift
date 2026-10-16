@@ -50,8 +50,14 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
   const dayOff = offByDate.get(selected) ?? null;
 
   // 左右スワイプで月を切り替える
-  const touchX = useRef<number | null>(null);
-  const move = (delta: number) => setYm(addMonths(ym.year, ym.month, delta));
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  /** 月を切り替える。選んでいる日もその月に合わせる (今月なら今日、ほかの月は 1日) */
+  const move = (delta: number) => {
+    const next = addMonths(ym.year, ym.month, delta);
+    setYm(next);
+    const isThisMonth = next.year === now.getFullYear() && next.month === now.getMonth() + 1;
+    onSelect(isThisMonth ? today : `${next.year}-${String(next.month).padStart(2, "0")}-01`);
+  };
   /** その日を選んで、その月を表示する */
   const jump = (iso: string) => {
     const d = parseISODate(iso);
@@ -94,12 +100,15 @@ export function HomeView({ store, ym, setYm, selected, onSelect, onEdit, onAdd, 
 
       <div
         className="cal"
-        onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+        onTouchStart={(e) => (touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY })}
         onTouchEnd={(e) => {
-          if (touchX.current == null) return;
-          const dx = e.changedTouches[0].clientX - touchX.current;
-          touchX.current = null;
-          if (Math.abs(dx) > 60) move(dx < 0 ? 1 : -1);
+          const s = touchStart.current;
+          touchStart.current = null;
+          if (!s) return;
+          const dx = e.changedTouches[0].clientX - s.x;
+          const dy = e.changedTouches[0].clientY - s.y;
+          // ななめのスクロールで月が変わらないよう、横にはっきり動かしたときだけ
+          if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
         }}
       >
         {WEEKDAYS.map((w, i) => (

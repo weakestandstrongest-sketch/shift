@@ -12,6 +12,9 @@ const PATHS = {
   // リング付きのカレンダーに点の格子 (日付を選ぶ)
   calgrid: "M8 2.5v4M16 2.5v4M5.5 4.5h13A2.5 2.5 0 0 1 21 7v11.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5V7a2.5 2.5 0 0 1 2.5-2.5ZM8 11.5h.01M12 11.5h.01M16 11.5h.01M8 16h.01M12 16h.01M16 16h.01",
   pencil: "M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4",
+  trash: "M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2",
+  download: "M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14",
+  upload: "M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14",
 } as const;
 
 export type IconName = keyof typeof PATHS;

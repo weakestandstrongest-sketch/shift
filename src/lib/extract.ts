@@ -2,7 +2,7 @@ import type { ColorBreak, DayOff, OffSymbol, OffType, Settings, Shift, ShiftCode
 import { OFF_TYPES } from "../types";
 import { isValidISODate, normalizeTime, parseTimeRange, todayISO } from "./date";
 import type { PreparedImage } from "./image";
-import { isDuplicate, lookupCode, newId } from "./shift";
+import { isDuplicate, lookupCode, newId, ruleBreak, spanMinutes } from "./shift";
 
 export type DayKind = "勤務" | OffType | "不明";
 export const DAY_KINDS: DayKind[] = ["勤務", ...OFF_TYPES, "不明"];
@@ -118,6 +118,8 @@ export interface Candidate {
   color: string;
   /** マスの色から決まった休憩 (分)。null なら休憩ルールで自動 */
   breakMinutes: number | null;
+  /** 色の休憩が、時間の長さから決まる休憩ルールと違う (色の読み違いかもしれない) ときのルール側の休憩 */
+  ruleBreakIfDifferent: number | null;
 }
 
 /** 取り込み画面で確認するための休みの候補 */
@@ -167,7 +169,7 @@ export function matchOffSymbol(raw: string, symbols: OffSymbol[]): OffSymbol | n
  */
 export function toCandidates(
   result: Extraction,
-  settings: Pick<Settings, "codes" | "offSymbols"> & Partial<Pick<Settings, "colorBreaks">>,
+  settings: Pick<Settings, "codes" | "offSymbols"> & Partial<Pick<Settings, "colorBreaks" | "breakRules">>,
   existingShifts: Shift[],
   existingDaysOff: DayOff[],
 ): { work: Candidate[]; off: OffCandidate[] } {
@@ -210,6 +212,8 @@ export function toCandidates(
     const needsTime = !start || !end;
     const c = { date: d.date, start: start ?? "", end: end ?? "" };
     const duplicate = !needsTime && isDuplicate(c, existingShifts);
+    const cb = colorBreak(d.color, settings.colorBreaks ?? []);
+    const rb = !needsTime && settings.breakRules?.length ? ruleBreak(spanMinutes(c), settings.breakRules) : null;
     work.push({
       key: newId(),
       ...c,
@@ -220,7 +224,8 @@ export function toCandidates(
       duplicate,
       selected: !needsTime && !duplicate,
       color: d.color ? canonicalColor(d.color) : "",
-      breakMinutes: colorBreak(d.color, settings.colorBreaks ?? []),
+      breakMinutes: cb,
+      ruleBreakIfDifferent: rb != null && cb != null && rb !== cb ? rb : null,
     });
   }
   work.sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));

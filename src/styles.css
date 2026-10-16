@@ -129,7 +129,8 @@ button.wide {
 .icon-btn {
   background: transparent;
   font-size: 20px;
-  padding: 4px 8px;
+  padding: 6px 8px;
+  color: var(--muted);
 }
 .link-btn {
   background: transparent;
@@ -308,7 +309,7 @@ summary {
   cursor: pointer;
 }
 .big-num {
-  font-size: 80px;
+  font-size: clamp(64px, 20vw, 80px);
   font-weight: 300;
   line-height: 0.85;
   letter-spacing: -3px;
@@ -317,6 +318,7 @@ summary {
 .big-year {
   font-size: 19px;
   color: var(--muted);
+  white-space: nowrap;
 }
 .head-actions {
   display: flex;
@@ -509,7 +511,7 @@ summary {
 }
 .item-time {
   align-self: center;
-  font-size: 20px;
+  font-size: clamp(17px, 5vw, 20px);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   min-width: 58px;
@@ -526,6 +528,12 @@ summary {
   gap: 2px;
   flex: 1;
   min-width: 0;
+}
+.item-body strong,
+.item-body small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .item-body strong {
   font-size: 16px;
@@ -992,15 +1000,22 @@ summary {
   padding: 12px 0 12px 8px;
   white-space: nowrap;
 }
-.wp-table td:first-child {
+.wp-table tr.wp-name-row td {
   text-align: left;
   white-space: normal;
-  padding-left: 0;
+  padding: 12px 0 0;
+}
+.wp-table tr.wp-name-row + tr td {
+  padding-top: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.wp-name-row small {
+  margin-left: 14px;
 }
 .wp-name {
   display: flex;
   align-items: flex-start;
-  font-size: 13px;
+  font-size: 14px;
   gap: 6px;
   font-weight: 700;
 }
@@ -1024,11 +1039,17 @@ summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 0 2px;
   font-size: 14px;
 }
 .salary-line .off-counts {
   margin: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.salary-line > span:first-child {
+  white-space: nowrap;
 }
 .card-head {
   display: flex;
@@ -1048,11 +1069,14 @@ summary {
 }
 .sr-date {
   font-weight: 700;
-  min-width: 72px;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .sr-time {
   flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: clamp(14px, 4.2vw, 16px);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1131,6 +1155,7 @@ summary {
 .photo-buttons > * {
   flex: 1;
   margin: 0;
+  white-space: nowrap;
 }
 .thumbs {
   display: flex;
@@ -1307,6 +1332,9 @@ summary {
   font-size: 22px;
   font-variant-numeric: tabular-nums;
 }
+.usage-top small {
+  white-space: nowrap;
+}
 .usage-top small,
 .usage small {
   font-size: 12px;
@@ -1354,9 +1382,20 @@ summary {
   align-items: center;
   margin-bottom: 8px;
 }
-.wp-edit input[type="number"] {
-  width: 90px;
-  flex: none;
+.wp-block {
+  padding: 4px 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.wp-wage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding-left: 46px;
+}
+.wp-wage input {
+  width: 110px;
 }
 .code-edit input:first-child {
   width: 64px;

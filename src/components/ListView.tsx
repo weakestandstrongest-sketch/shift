@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { Store } from "../App";
 import type { Shift } from "../types";
 import { OFF_TYPES } from "../types";
@@ -183,7 +183,6 @@ export function ListView({ store, ym, setYm, onEdit }: { store: Store; ym: YM; s
           <table className="wp-table">
             <thead>
               <tr>
-                <th />
                 <th>勤務時間</th>
                 <th>給料見込</th>
                 <th>働いた分</th>
@@ -191,8 +190,9 @@ export function ListView({ store, ym, setYm, onEdit }: { store: Store; ym: YM; s
             </thead>
             <tbody>
               {perWorkplace.map((p) => (
-                <tr key={p.wp?.id ?? "none"}>
-                  <td>
+                <Fragment key={p.wp?.id ?? "none"}>
+                <tr className="wp-name-row">
+                  <td colSpan={3}>
                     <span className="wp-name">
                       <i style={{ background: p.wp?.color ?? "var(--muted)" }} />
                       {p.wp?.name ?? "勤務先未設定"}
@@ -201,10 +201,13 @@ export function ListView({ store, ym, setYm, onEdit }: { store: Store; ym: YM; s
                       {ym.month}/1〜{ym.month}/{lastDay}
                     </small>
                   </td>
+                </tr>
+                <tr>
                   <td>{formatHours(p.sum.minutes)}</td>
                   <td>{p.wp?.hourlyWage != null ? yen(p.sum.pay) : "—"}</td>
                   <td className="green">{p.wp?.hourlyWage != null ? yen(p.done.pay) : formatHours(p.done.minutes)}</td>
                 </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

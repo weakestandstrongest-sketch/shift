@@ -337,6 +337,9 @@ export function ImportView({
                       </div>
                       <div className="badges">
                         {c.needsTime && <span className="badge warn">時間を入力してください</span>}
+                        {c.ruleBreakIfDifferent != null && (
+                          <span className="badge warn">色の休憩と時間からの休憩({c.ruleBreakIfDifferent}分)が違います</span>
+                        )}
                         {c.breakMinutes != null && (
                           <span className="badge note">
                             {c.breakMinutes === 0 ? "休憩なし" : `休憩${c.breakMinutes}分`}（{c.color}）
