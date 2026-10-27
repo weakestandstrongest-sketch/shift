@@ -46,7 +46,7 @@ export const SYSTEM_PROMPT = `あなたは、アルバイトやパートのシ�
 - 「早」「遅」「A」のような記号だけのマスは、写真内の凡例か、ユーザーが登録した記号の対応表から時間を決めてください。どちらからも分からなければ start / end を null にします。
 - 「L」「ラスト」「締め」「〜CL」など終了時刻が書かれていない場合は end を null にし、note に理由を書きます。
 - 読みにくい・自信がないマスは uncertain を true にします。推測で埋めずに、分かったことだけを書いてください。
-- 休憩時間・担当・ポジションなどの補足があれば note に短く書きます。`;
+- 休憩時間・担当・ポジションなどの補足があれば note に短く書きます。なければ空文字にします。`;
 
 export function buildUserText(settings: Settings, targetMonth: string | null): string {
   const names = [settings.myName, ...settings.aliases].filter(Boolean);
@@ -82,10 +82,19 @@ export interface GeminiRequest {
   userText: string;
   apiKey: string;
   model: string;
+  /** じっくり考えて読むか (時間がかかる) */
+  careful: boolean;
+  /** 読み取りの途中経過 (読めた日数) */
+  onProgress?: (days: number) => void;
 }
 
 /** 写真 (複数枚可) を Gemini に送り、本人のシフトを読み取る */
-export async function extractShifts(images: PreparedImage[], settings: Settings, targetMonth: string | null): Promise<Extraction> {
+export async function extractShifts(
+  images: PreparedImage[],
+  settings: Settings,
+  targetMonth: string | null,
+  onProgress?: (days: number) => void,
+): Promise<Extraction> {
   if (!settings.myName.trim()) throw new ExtractionError("設定画面で自分の名前を入力してください。");
   if (!settings.geminiApiKey) throw new ExtractionError("設定画面で Gemini API キーを入力してください。");
 
@@ -98,6 +107,8 @@ export async function extractShifts(images: PreparedImage[], settings: Settings,
     userText: buildUserText(settings, targetMonth),
     apiKey: settings.geminiApiKey,
     model: settings.geminiModel,
+    careful: settings.readingMode === "careful",
+    onProgress,
   });
 }
 

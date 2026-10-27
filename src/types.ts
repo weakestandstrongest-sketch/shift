@@ -109,6 +109,8 @@ export interface Settings {
   defaultWorkplaceId: string | null;
   /** 月間の目標金額 (円)。未設定なら null */
   monthlyGoal: number | null;
+  /** 写真の読み取り方。fast: AI があまり考えずにすばやく読む / careful: じっくり考えて読む (時間がかかる) */
+  readingMode: "fast" | "careful";
   /** 何日ごとにバックアップのお知らせを出すか (0 = 出さない) */
   backupReminderDays: number;
   /** 最後にバックアップした日 (YYYY-MM-DD)。まだなら null */

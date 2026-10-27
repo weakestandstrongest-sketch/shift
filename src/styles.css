@@ -2014,3 +2014,8 @@ select.ios-pill {
   font-size: 13px;
   margin: 4px 0 0;
 }
+.read-seconds {
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}

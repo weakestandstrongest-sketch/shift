@@ -46,3 +46,11 @@ describe("migrate", () => {
     expect(d.settings).not.toHaveProperty("provider");
   });
 });
+
+describe("countDays (読み取りの途中経過)", () => {
+  it("途中までの JSON から読めた日数を数える", async () => {
+    const { countDays } = await import("./gemini");
+    expect(countDays("")).toBe(0);
+    expect(countDays('{"matched_name":"x","days":[{"date":"2026-11-01","raw":"930F16"},{"date" : "2026-11-0')).toBe(2);
+  });
+});

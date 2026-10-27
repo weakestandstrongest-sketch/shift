@@ -110,6 +110,14 @@ export function SettingsView({ store }: { store: Store }) {
             <small className="muted">通常は変更不要です (空欄なら {DEFAULT_GEMINI_MODEL})</small>
           </label>
         </details>
+        <label className="backup-remind">
+          <span>読み取り方</span>
+          <select value={settings.readingMode} onChange={(e) => setSettings({ readingMode: e.target.value as Settings["readingMode"] })}>
+            <option value="fast">はやい (おすすめ)</option>
+            <option value="careful">ていねい (時間がかかる)</option>
+          </select>
+        </label>
+        <p className="hint">読み間違いが多いときは「ていねい」にすると、AI がじっくり考えてから答えます。</p>
         <h4 className="sub-label">無料枠の残り</h4>
         <UsageMeter editable />
         <p className="hint">API キーはこの端末の中だけに保存され、読み取りのときに Gemini API へ直接送られます。</p>

@@ -24,6 +24,8 @@ export function ImportView({
   const [targetMonth, setTargetMonth] = useState("");
   const [workplaceId, setWorkplaceId] = useState<string | null>(settings.defaultWorkplaceId ?? data.workplaces[0]?.id ?? null);
   const [loading, setLoading] = useState(false);
+  /** 読み取りの途中経過: 読めた日数と、始めてからの秒数 */
+  const [progress, setProgress] = useState({ days: 0, seconds: 0 });
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Extraction | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -41,6 +43,8 @@ export function ImportView({
     if (!files?.length) return;
     setError(null);
     try {
+      // 読み取りに使う部分 (大きい) を先に読み込んでおき、ボタンを押してからの待ち時間を減らす
+      void import("../lib/gemini").catch(() => {});
       const prepared = await Promise.all([...files].map(prepareImage));
       setImages((prev) => [...prev, ...prepared]);
       setResult(null);
@@ -56,10 +60,13 @@ export function ImportView({
     setResult(null);
     setCandidates([]);
     setOffCandidates([]);
+    setProgress({ days: 0, seconds: 0 });
+    const t0 = Date.now();
+    const timer = window.setInterval(() => setProgress((p) => ({ ...p, seconds: Math.floor((Date.now() - t0) / 1000) })), 1000);
     try {
       // AI の SDK は大きいので、読み取りを実行するときだけ読み込む
       const { extractShifts, toCandidates, coveredRange } = await import("../lib/extract");
-      const r = await extractShifts(images, settings, targetMonth || null);
+      const r = await extractShifts(images, settings, targetMonth || null, (days) => setProgress((p) => (p.days === days ? p : { ...p, days })));
       setResult(r);
       const { work, off } = toCandidates(r, settings, data.shifts, data.daysOff);
       const cr = coveredRange(r);
@@ -73,6 +80,7 @@ export function ImportView({
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
+      window.clearInterval(timer);
       setLoading(false);
     }
   }
@@ -241,8 +249,10 @@ export function ImportView({
               {loading ? "読み取り中…" : "シフトを読み取る"}
             </button>
             {loading && (
-              <p className="muted center">
-                <span className="spinner" /> 写真を解析しています (30秒〜1分ほどかかります)
+              <p className="muted center read-progress" role="status">
+                <span className="spinner" />{" "}
+                {progress.days > 0 ? `${progress.days}日分 読み取りました` : "写真を見ています"}
+                <span className="read-seconds">{progress.seconds}秒</span>
               </p>
             )}
           </>

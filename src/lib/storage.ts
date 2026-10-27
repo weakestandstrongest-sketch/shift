@@ -56,6 +56,7 @@ export function defaultData(): AppData {
       readingNotes: "",
       defaultWorkplaceId: null,
       monthlyGoal: null,
+      readingMode: "fast",
       backupReminderDays: 14,
       lastBackupAt: null,
       backupReminderSince: todayISO(),

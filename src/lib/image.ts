@@ -6,8 +6,8 @@ export interface PreparedImage {
   name: string;
 }
 
-// 細かい表の文字を読めるよう大きめに保ちつつ、送信サイズは抑える
-const MAX_EDGE = 2400;
+// 細かい表の文字を読めるよう大きめに保ちつつ、送信サイズ (= 送る時間) は抑える
+const MAX_EDGE = 2048;
 
 /** 写真を縮小・JPEG 化して API に送れる形にする (EXIF の向きも反映される) */
 export async function prepareImage(file: File): Promise<PreparedImage> {
@@ -24,7 +24,7 @@ export async function prepareImage(file: File): Promise<PreparedImage> {
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close();
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
   return {
     data: dataUrl.slice(dataUrl.indexOf(",") + 1),
     mediaType: "image/jpeg",

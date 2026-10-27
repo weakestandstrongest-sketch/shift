@@ -1,4 +1,4 @@
-import { ApiError, createPartFromBase64, createUserContent, FinishReason, GoogleGenAI } from "@google/genai";
+import { ApiError, createPartFromBase64, createUserContent, FinishReason, GoogleGenAI, ThinkingLevel, type GenerateContentConfig } from "@google/genai";
 import { DAY_KINDS, ExtractionError, type Extraction, type GeminiRequest } from "./extract";
 import { DEFAULT_GEMINI_MODEL } from "./storage";
 import { parseGeminiJSON } from "./geminiParse";
@@ -72,7 +72,29 @@ export async function extractWithGemini(req: GeminiRequest): Promise<Extraction>
   }
 }
 
-async function callGemini({ images, system, userText, apiKey }: GeminiRequest, model: string): Promise<Extraction> {
+/**
+ * AI が考える時間。いちばん時間がかかる部分なので、ふだんは短く (LOW) する。
+ * マスの文字を書き写す作業なので、短くしても読み取りの質はあまり落ちない。「ていねい」のときだけ長く考えさせる。
+ */
+const thinkingFor = (careful: boolean) => ({ thinkingLevel: careful ? ThinkingLevel.HIGH : ThinkingLevel.LOW });
+
+/** この考える時間の設定に対応していないモデル (設定で古いモデルを指定したときなど) のエラーか */
+const isThinkingUnsupported = (e: unknown) => e instanceof ApiError && e.status === 400 && /thinking/i.test(e.message);
+
+async function callGemini(req: GeminiRequest, model: string): Promise<Extraction> {
+  try {
+    return await callGeminiOnce(req, model, thinkingFor(req.careful));
+  } catch (e) {
+    if (!isThinkingUnsupported(e)) throw e;
+    return callGeminiOnce(req, model, undefined);
+  }
+}
+
+async function callGeminiOnce(
+  { images, system, userText, apiKey, onProgress }: GeminiRequest,
+  model: string,
+  thinkingConfig: GenerateContentConfig["thinkingConfig"],
+): Promise<Extraction> {
   const ai = new GoogleGenAI({
     apiKey,
     httpOptions: {
@@ -84,27 +106,40 @@ async function callGemini({ images, system, userText, apiKey }: GeminiRequest, m
       },
     },
   });
-  const res = await ai.models.generateContent({
+  // 少しずつ受け取って、読めた日数を途中経過として出す (待ち時間が分かるように)
+  const stream = await ai.models.generateContentStream({
     model,
     contents: [createUserContent([...images.map((img) => createPartFromBase64(img.data, img.mediaType)), userText + GEMINI_NOTE])],
     config: {
       systemInstruction: system,
       responseMimeType: "application/json",
       responseJsonSchema: responseSchema,
+      ...(thinkingConfig ? { thinkingConfig } : {}),
     },
   });
+  let text = "";
+  let finish: string | undefined;
+  let blocked = false;
+  for await (const chunk of stream) {
+    text += chunk.text ?? "";
+    finish = chunk.candidates?.[0]?.finishReason ?? finish;
+    if (chunk.promptFeedback?.blockReason) blocked = true;
+    onProgress?.(countDays(text));
+  }
 
-  const finish = res.candidates?.[0]?.finishReason;
-  if (res.promptFeedback?.blockReason || (finish && BLOCKED.includes(finish))) {
+  if (blocked || (finish && BLOCKED.includes(finish))) {
     throw new ExtractionError("この画像は読み取れませんでした。別の写真で試してください。");
   }
   if (finish === FinishReason.MAX_TOKENS) {
     throw new ExtractionError("読み取り結果が長すぎて途中で切れました。写真を分けて試してください。");
   }
-  const parsed = parseGeminiJSON(res.text ?? "");
+  const parsed = parseGeminiJSON(text);
   if (!parsed) throw new ExtractionError("読み取り結果を解釈できませんでした。もう一度試してください。");
   return parsed;
 }
+
+/** 途中までの JSON から、読めた日数を数える */
+export const countDays = (partial: string) => (partial.match(/"date"\s*:/g) ?? []).length;
 
 function toExtractionError(e: unknown, model: string): unknown {
   if (e instanceof ExtractionError) return e;
